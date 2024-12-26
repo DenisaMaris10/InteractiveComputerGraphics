@@ -25,20 +25,29 @@
 gps::Window myWindow;
 
 // matrices
+// model
 glm::mat4 model;
+glm::mat4 sceneModel;
+glm::mat4 tennisBallModel;
+glm::mat4 initialTennisBallModel;
+// view
 glm::mat4 view;
+// projection
 glm::mat4 projection;
+// normal
 glm::mat3 normalMatrix;
+glm::mat3 sceneNormalMatrix;
+glm::mat3 tennisBallNormalMatrix;
 
 // light parameters
 glm::vec3 directionalLightDir;
 glm::vec3 directionalLightColor;
 
 // positional lights parameters
-glm::vec3 positionalLightDir1 = glm::vec3(8.0f, -7.0f, 7.0f); //  red
-glm::vec3 positionalLightDir2 = glm::vec3(8.0f, 7.0f, 7.0f); // orange
-glm::vec3 positionalLightDir3 = glm::vec3(8.0f, -7.0f, -7.0f); // purple
-glm::vec3 positionalLightDir4 = glm::vec3(8.0f, 7.0f, -7.0f);  // blue
+glm::vec3 positionalLightDir1 = glm::vec3(1+8.0f, 7.0f, -7.0f); //  red
+glm::vec3 positionalLightDir2 = glm::vec3(1+8.0f, 7.0f, 7.0f); // orange
+glm::vec3 positionalLightDir3 = glm::vec3(-1-8.0f, 7.0f, 7.0f); // purple
+glm::vec3 positionalLightDir4 = glm::vec3(-1-8.0f, 7.0f, -7.0f);  // blue
 glm::vec3 positionalLightColor1;
 glm::vec3 positionalLightColor2;
 glm::vec3 positionalLightColor3;
@@ -64,11 +73,11 @@ GLint positionalLightColorLoc4;
 
 // camera
 gps::Camera myCamera(
-    glm::vec3(0.0f, 1.0f, 3.0f),
+    glm::vec3(-20.0f, 3.0f, 3.0f),
     glm::vec3(0.0f, 0.0f, -10.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 
-GLfloat cameraSpeed = 0.05f;
+GLfloat cameraSpeed = 0.1f;
 
 GLboolean pressedKeys[1024];
 
@@ -95,6 +104,10 @@ gps::Shader skyboxShader;
 
 // light shaders
 gps::Shader lightingShader;
+
+// animatie minge de tenis 
+float deltaZ, deltaY = 3, viteza = 0.1, gravity = 0.05f;
+bool upDirection = false;
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -232,6 +245,12 @@ void processMovement() {
         angle -= 1.0f;
         // update model matrix for teapot
         model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+
+        static int i = 0;
+        i = (i + 1) % 4;;
+        glm::vec3 positionalLightDir[] = { glm::vec3(8.0f, 7.0f, -7.0f), glm::vec3(8.0f, 7.0f, 7.0f), glm::vec3(-8.0f, 7.0f, 7.0f),  glm::vec3(-8.0f, 7.0f, -7.0f) }; //  red
+
+        model = glm::translate(positionalLightDir[i]) * model;
         // update normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
     }
@@ -276,8 +295,9 @@ void initOpenGLState() {
 
 void initModels() {
     teapot.LoadModel("models/teapot/teapot20segUT.obj");
-    scene.LoadModel("models/Scena_Copac_2/Scena_2.obj");
+    scene.LoadModel("models/Scena_Copac/Scena_2.obj");
     tennis_ball.LoadModel("models/Minge_tenis_obj/Minge_tenis_final.obj");
+    initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
 void initShaders() {
@@ -390,12 +410,12 @@ void initLightUniformsForShader(gps::Shader shader) {
     // send light color to shader
     glUniform3fv(positionalLightColorLoc2, 1, glm::value_ptr(positionalLightColor2));
     // 3
-    positionalLightColor3 = glm::vec3(1.0f, 0.0f, 0.0f);//glm::vec3(0.7f, 0.4f, 1.0f);  //purple
+    positionalLightColor3 = glm::vec3(0.0f, 1.0f, 0.0f);//glm::vec3(0.7f, 0.4f, 1.0f);  //purple
     positionalLightColorLoc3 = glGetUniformLocation(shader.shaderProgram, "positionalLightColor3");   
     // send light color to shader
     glUniform3fv(positionalLightColorLoc3, 1, glm::value_ptr(positionalLightColor3));
     // 4
-    positionalLightColor4 = glm::vec3(0.0f, 0.0f, 1.0f);//glm::vec3(0.9f, 0.6f, 0.2f);//glm::vec3(0.0f, 0.0f, 1.0f); // blue
+    positionalLightColor4 = glm::vec3(1.0f, 1.0f, 1.0f);//glm::vec3(0.9f, 0.6f, 0.2f);//glm::vec3(0.0f, 0.0f, 1.0f); // blue
     positionalLightColorLoc4 = glGetUniformLocation(shader.shaderProgram, "positionalLightColor4");
     // send light color to shader
     glUniform3fv(positionalLightColorLoc4, 1, glm::value_ptr(positionalLightColor4));
@@ -429,9 +449,11 @@ void renderTeapot(gps::Shader shader) {
 void renderField(gps::Shader shader) {
     shader.useShaderProgram();
 
-    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    sceneModel = glm::mat4(1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
 
-    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
+    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
     scene.Draw(shader);
 }
@@ -439,9 +461,28 @@ void renderField(gps::Shader shader) {
 void renderTennisBall(gps::Shader shader) {
     shader.useShaderProgram();
 
-    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    if (deltaZ + viteza > 10 || deltaZ + viteza < -10) {
+        viteza = -viteza;
+        upDirection = false;
+        gravity = -gravity;
+    }
 
-    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    if (deltaY - 0.5 <= 0) {
+        upDirection = true;
+        gravity = -gravity;
+    }
+    if (deltaY + 0.5 >= 3 && upDirection)
+        deltaY = 3.0f;
+    else 
+        deltaY += gravity;
+    deltaZ += viteza;
+    tennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, deltaY, deltaZ));
+
+    //tennisBallModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(tennisBallModel));
+
+    tennisBallNormalMatrix = glm::mat3(glm::inverseTranspose(view * tennisBallModel));
+    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(tennisBallNormalMatrix));
 
     tennis_ball.Draw(shader);
 

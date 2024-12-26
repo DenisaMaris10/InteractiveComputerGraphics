@@ -44,10 +44,10 @@ void computeDirLightComponents(inout vec3 ambient, inout vec3 diffuse, inout vec
 	vec3 normalEye = normalize(fNormal);	
 	
 	//compute light direction
-	vec3 lightDirN = normalize(vec3(lightPosEye) - fPosEye.xyz).xyz;
+	vec3 lightDirN = normalize(vec3(lightPosEye)).xyz;
 
 	//compute view direction 
-	vec3 viewDirN = normalize(cameraPosEye - fPosEye.xyz);
+	vec3 viewDirN = normalize(fPosEye.xyz);
 		
 	//compute ambient light
 	ambient = ambientStrength * lightColor;
@@ -71,7 +71,7 @@ void computePositionalLight(inout vec3 ambient, inout vec3 diffuse, inout vec3 s
 	vec3 normalEye = normalize(fNormal);	
 	
 	//compute light direction
-	vec3 lightDirN = normalize(lightDir).xyz;
+	vec3 lightDirN = normalize(vec3(lightDir) - fPosEye.xyz).xyz;
 	
 
 	//compute view direction 
@@ -90,17 +90,17 @@ void computePositionalLight(inout vec3 ambient, inout vec3 diffuse, inout vec3 s
 	specular = specularStrength * specCoeff * lightColor;
 
 	//compute distance to light
-	float dist = length(vec3(directionalLightPosEye) - fPosEye.xyz);
+	float dist = length(vec3(lightDir) - fPosEye.xyz);
 	//compute attenuation
 	float att = 1.0f/(constant + linear * dist + quadratic *(dist*dist));
 	
 	//compute ambient light
-	ambient = att*ambientStrength*lightColor;
+	ambient = att*ambient;
 
 	//compute diffuse light
-	diffuse = att*max(dot(normalEye, lightDirN), 0.0f)*lightColor;
+	diffuse = att*diffuse;
 
-	specular = att*specularStrength*specCoeff*lightColor;
+	specular = att*specular;
 }
 
 void main() 
