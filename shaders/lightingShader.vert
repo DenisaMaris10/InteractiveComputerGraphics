@@ -13,6 +13,7 @@ out vec4 positionalLightPosEye1;
 out vec4 positionalLightPosEye2; 
 out vec4 positionalLightPosEye3; 
 out vec4 positionalLightPosEye4; 
+out vec4 fragPosLightSpace;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -23,6 +24,7 @@ uniform	vec3 posLightDir1;
 uniform	vec3 posLightDir2;
 uniform	vec3 posLightDir3;
 uniform	vec3 posLightDir4;
+uniform mat4 lightSpaceTrMatrix;
 
 void main() 
 {
@@ -35,5 +37,6 @@ void main()
 	positionalLightPosEye3 = view * vec4(posLightDir3, 1.0f);
 	positionalLightPosEye4 = view * vec4(posLightDir4, 1.0f);
 	fNormal = normalize(normalMatrix * vNormal);
+	fragPosLightSpace = lightSpaceTrMatrix * model * vec4(vPosition, 1.0f);
 	gl_Position = projection * view * model * vec4(vPosition, 1.0f);
 }

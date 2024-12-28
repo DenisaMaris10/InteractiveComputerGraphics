@@ -85,6 +85,7 @@ GLboolean pressedKeys[1024];
 gps::Model3D teapot;
 gps::Model3D scene;
 gps::Model3D tennis_ball;
+gps::Model3D screenQuad;
 GLfloat angle;
 
 // shaders
@@ -104,6 +105,15 @@ gps::Shader skyboxShader;
 
 // light shaders
 gps::Shader lightingShader;
+
+// shadows
+GLuint shadowMapFBO;
+GLuint depthMapTexture;
+bool showDepthMap;
+const unsigned int SHADOW_WIDTH = 2048;
+const unsigned int SHADOW_HEIGHT = 2048;
+gps::Shader depthMapShader;
+gps::Shader screenQuadShader;
 
 // animatie minge de tenis 
 float deltaZ, deltaY = 3, viteza = 0.1, gravity = 0.05f;
@@ -184,10 +194,10 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
         printf("Mouse: %lf, %lf\n", yaw, pitch);
         myCamera.rotate(pitch, yaw);
         view = myCamera.getViewMatrix();
-        myBasicShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        lightingShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //myBasicShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //lightingShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
     }
 }
@@ -197,10 +207,10 @@ void processMovement() {
 		myCamera.move(gps::MOVE_FORWARD, cameraSpeed);
 		//update view matrix
         view = myCamera.getViewMatrix();
-        myBasicShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        lightingShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //myBasicShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //lightingShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -209,10 +219,10 @@ void processMovement() {
 		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        myBasicShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        lightingShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //myBasicShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //lightingShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -221,10 +231,10 @@ void processMovement() {
 		myCamera.move(gps::MOVE_LEFT, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        myBasicShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        lightingShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //myBasicShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //lightingShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -233,10 +243,10 @@ void processMovement() {
 		myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        myBasicShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        lightingShader.useShaderProgram();
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //myBasicShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //lightingShader.useShaderProgram();
+        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -270,6 +280,10 @@ void processMovement() {
     if (pressedKeys[GLFW_KEY_F]) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
+
+    if (pressedKeys[GLFW_KEY_M]) {
+        showDepthMap = !showDepthMap;
+    }
 }
 
 void initOpenGLWindow() {
@@ -288,7 +302,7 @@ void initOpenGLState() {
     glEnable(GL_FRAMEBUFFER_SRGB);
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
 	glDepthFunc(GL_LESS); // depth-testing interprets a smaller value as "closer"
-	//glEnable(GL_CULL_FACE); // cull face
+	glEnable(GL_CULL_FACE); // cull face 
 	glCullFace(GL_BACK); // cull back face
 	glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
 }
@@ -296,7 +310,8 @@ void initOpenGLState() {
 void initModels() {
     teapot.LoadModel("models/teapot/teapot20segUT.obj");
     scene.LoadModel("models/Scena_Copac/Scena_2.obj");
-    tennis_ball.LoadModel("models/Minge_tenis_obj/Minge_tenis_final.obj");
+    tennis_ball.LoadModel("models/Minge_putine_varfuri/Minge_tenis_final.obj");
+    screenQuad.LoadModel("models/quad/quad.obj");
     initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
@@ -306,6 +321,8 @@ void initShaders() {
         "shaders/basic.frag");
     skyboxShader.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
     lightingShader.loadShader("shaders/lightingShader.vert", "shaders/lightingShader.frag");
+    depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
+    screenQuadShader.loadShader("shaders/screenQuad.vert", "shaders/screenQuad.frag");
 }
 
 void initUniforms(gps::Shader myBasicShader) {
@@ -334,7 +351,7 @@ void initUniforms(gps::Shader myBasicShader) {
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));	
 
 	//set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 1.0f, 1.0f);
+    directionalLightDir = glm::vec3(0.0f, 10.0f, 0.0f);
     directionalLightDirLoc = glGetUniformLocation(myBasicShader.shaderProgram, "lightDir");
 	// send light dir to shader
 	glUniform3fv(directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -373,7 +390,7 @@ void initLightUniformsForShader(gps::Shader shader) {
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
     //set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 10.0f, 10.0f);
+    directionalLightDir = glm::vec3(0.0f, 10.0f, 5.0f);
     directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "dirLightDir");
     // send light dir to shader
     glUniform3fv(directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -432,33 +449,87 @@ void initSkybox() {
     mySkyBox.Load(faces);
 }
 
-void renderTeapot(gps::Shader shader) {
+void initFBO() {
+    glGenFramebuffers(1, &shadowMapFBO);
+    glGenTextures(1, &depthMapTexture);
+    glBindTexture(GL_TEXTURE_2D, depthMapTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    //attach texture to FBO 
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMapTexture, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+glm::mat4 computeLightSpaceTrMatrix() { 
+    glm::mat4 lightView = glm::lookAt(directionalLightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); 
+    const GLfloat near_plane = 0.1f, far_plane = 400.0f; 
+    glm::mat4 lightProjection = glm::ortho(-200.0f, 200.0f, -200.0f, 200.0f, near_plane, far_plane); 
+    glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;  
+    return lightSpaceTrMatrix; 
+}
+
+void bindShadowMap(gps::Shader shader)
+{
+    glActiveTexture(GL_TEXTURE3); 
+    glBindTexture(GL_TEXTURE_2D, depthMapTexture); 
+    glUniform1i(glGetUniformLocation(shader.shaderProgram, "shadowMap"), 3); 
+
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix"), 
+        1, 
+        GL_FALSE, 
+        glm::value_ptr(computeLightSpaceTrMatrix())); 
+
+}
+
+void renderTeapot(gps::Shader shader, bool depthPass) {
     // select active shader program
     shader.useShaderProgram();
+
+    bindShadowMap(shader);
 
     //send teapot model matrix data to shader
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
     //send teapot normal matrix data to shader
-    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    if (!depthPass) 
+    {
+        view = myCamera.getViewMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    }
 
     // draw teapot
     teapot.Draw(shader);
 }
 
-void renderField(gps::Shader shader) {
+void renderField(gps::Shader shader, bool depthPass) {
     shader.useShaderProgram();
+
+    bindShadowMap(shader);
 
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
 
-    sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
-    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
+    if (!depthPass)
+    {
+        view = myCamera.getViewMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
+    }
     scene.Draw(shader);
 }
 
-void renderTennisBall(gps::Shader shader) {
+void renderTennisBall(gps::Shader shader, bool depthPass) {
     shader.useShaderProgram();
 
     if (deltaZ + viteza > 10 || deltaZ + viteza < -10) {
@@ -478,11 +549,19 @@ void renderTennisBall(gps::Shader shader) {
     deltaZ += viteza;
     tennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, deltaY, deltaZ));
 
+
+    bindShadowMap(shader);
+
     //tennisBallModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(tennisBallModel));
 
-    tennisBallNormalMatrix = glm::mat3(glm::inverseTranspose(view * tennisBallModel));
-    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(tennisBallNormalMatrix));
+    if (!depthPass)
+    {
+        view = myCamera.getViewMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        tennisBallNormalMatrix = glm::mat3(glm::inverseTranspose(view * tennisBallModel));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(tennisBallNormalMatrix));
+    }
 
     tennis_ball.Draw(shader);
 
@@ -490,19 +569,58 @@ void renderTennisBall(gps::Shader shader) {
 
 void renderSkybox(gps::Shader shader) {
     shader.useShaderProgram();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     mySkyBox.Draw(skyboxShader, view, projection);
 }
 
+void drawObjects(gps::Shader shader, bool depthPass)
+{
+    renderTeapot(depthPass ? shader : lightingShader, depthPass);
+    renderField(depthPass ? shader : lightingShader, depthPass);
+    renderTennisBall(depthPass ? shader : lightingShader, depthPass);
+    if (!depthPass)
+        renderSkybox(skyboxShader);
+}
+
 void renderScene() {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // rasterizarea in harta de adancime
+    depthMapShader.useShaderProgram(); 
+    glUniformMatrix4fv(glGetUniformLocation(depthMapShader.shaderProgram, "lightSpaceTrMatrix"), 1, GL_FALSE, glm::value_ptr(computeLightSpaceTrMatrix()));
+    glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT); 
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO); 
+    glClear(GL_DEPTH_BUFFER_BIT); 
 
-	//render the scene
+    drawObjects(depthMapShader, true); 
 
-	// render the teapot
-	renderTeapot(myBasicShader);
-    renderField(lightingShader); 
-    renderTennisBall(lightingShader);
-    renderSkybox(skyboxShader);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (showDepthMap) {
+        glViewport(0, 0, myWindow.getWindowDimensions().width, myWindow.getWindowDimensions().height);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        screenQuadShader.useShaderProgram();
+
+        //bind the depth map
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, depthMapTexture);
+        glUniform1i(glGetUniformLocation(screenQuadShader.shaderProgram, "depthMap"), 0);
+
+        glDisable(GL_DEPTH_TEST);
+        screenQuad.Draw(screenQuadShader);
+        glEnable(GL_DEPTH_TEST);
+    }
+    else {
+
+        // rasterizarea cu umbre a scenei
+
+        glViewport(0, 0, myWindow.getWindowDimensions().width, myWindow.getWindowDimensions().height);
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        drawObjects(depthMapShader, false);
+    }
 
 }
 
@@ -526,6 +644,7 @@ int main(int argc, const char * argv[]) {
 	initUniforms(myBasicShader);
     initLightUniformsForShader(lightingShader);
     initSkybox();
+    initFBO();
     setWindowCallbacks();
 
     glfwSetInputMode(myWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);

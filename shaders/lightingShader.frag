@@ -8,12 +8,14 @@ in vec4 positionalLightPosEye2;
 in vec4 positionalLightPosEye3; 
 in vec4 positionalLightPosEye4; 
 in vec2 fragTexCoords;
+in vec4 fragPosLightSpace;
 
 out vec4 fColor;
 
 //lighting
 uniform	vec3 lightColor;
 uniform vec3 positionalLightColor1;
+uniform sampler2D shadowMap;
 uniform vec3 positionalLightColor2;
 uniform vec3 positionalLightColor3;
 uniform vec3 positionalLightColor4;
@@ -103,6 +105,33 @@ void computePositionalLight(inout vec3 ambient, inout vec3 diffuse, inout vec3 s
 	specular = att*specular;
 }
 
+float computeShadow()
+{
+	// perform perspective divide
+	vec3 normalizedCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
+	// Transform to [0,1] range
+	normalizedCoords = normalizedCoords * 0.5 + 0.5;
+
+	// Get closest depth value from light's perspective
+	float closestDepth = texture(shadowMap, normalizedCoords.xy).r;
+
+	// Get depth of current fragment from light's perspective
+	float currentDepth = normalizedCoords.z;
+
+	// Check whether current frag pos is in shadow
+	//float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+
+	// Check whether current frag pos is in shadow
+	float bias = max(0.05f * (1.0f - dot(fNormal, directionalLightPosEye.xyz)), 0.005f);
+	float shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;
+
+	if(normalizedCoords.z > 1.0f)
+		return 0.0f;
+
+	return shadow;
+}
+
 void main() 
 {
 	// calculam lumina directionala
@@ -126,7 +155,8 @@ void main()
 	diffuse *= colorFromTexture.xyz; //texture(diffuseTexture, fragTexCoords);
 	specular *= texture(specularTexture, fragTexCoords);
 	}
-	vec3 color = min((ambient + diffuse) + specular, 1.0f);
+	float shadow = computeShadow();
+	vec3 color = min((ambient + (1.0f - shadow) * diffuse) + (1.0f - shadow) * specular, 1.0f);
     
     fColor = vec4(color, 1.0f);
 }
