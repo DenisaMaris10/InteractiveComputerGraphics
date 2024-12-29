@@ -20,6 +20,52 @@ namespace gps {
 			meshes[i].Draw(shaderProgram);
 	}
 
+	// Draw raindrops
+	void Model3D::configureInstancedArray(std::vector<glm::vec2> positions, int nrInstances) {
+
+		// this buffer is used to be able to send the modelMatrix 
+		glGenBuffers(1, &vbo_instanced);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo_instanced);
+		glBufferData(GL_ARRAY_BUFFER, nrInstances * sizeof(glm::vec2), &positions[0], GL_STATIC_DRAW);
+
+		for (unsigned int i = 0; i < meshes.size(); i++)
+		{
+			unsigned int VAO = meshes[i].getBuffers().VAO;
+			glBindVertexArray(VAO);
+			glEnableVertexAttribArray(3);
+
+			glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+			glVertexAttribDivisor(3, 1);
+
+			glBindVertexArray(0);
+		}
+	}
+	void Model3D::DrawRain(gps::Shader shaderProgram, int nrInstances) {
+		shaderProgram.useShaderProgram();
+		for (unsigned int i = 0; i < meshes.size(); i++)
+		{
+			//set textures
+			for (GLuint j = 0; j < meshes[i].textures.size(); j++) {
+
+				glActiveTexture(GL_TEXTURE0 + j);
+				glUniform1i(glGetUniformLocation(shaderProgram.shaderProgram, meshes[i].textures[j].type.c_str()), j);
+				glBindTexture(GL_TEXTURE_2D, meshes[i].textures[j].id);
+			}
+
+			glBindVertexArray(meshes[i].getBuffers().VAO);
+			glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(meshes[i].indices.size()), GL_UNSIGNED_INT, 0, nrInstances);
+			//glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(meshes[i].indices.size()), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			for (GLuint j = 0; j < meshes[i].textures.size(); j++) {
+
+				glActiveTexture(GL_TEXTURE0 + j);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+		}
+	}
+
 	// Does the parsing of the .obj file and fills in the data structure
 	void Model3D::ReadOBJ(std::string fileName, std::string basePath) {
 

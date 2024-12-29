@@ -21,6 +21,9 @@
 
 #include <iostream>
 
+// for random float numbers
+//#include <bits/stdc++.h>
+
 // window
 gps::Window myWindow;
 
@@ -30,6 +33,7 @@ glm::mat4 model;
 glm::mat4 sceneModel;
 glm::mat4 tennisBallModel;
 glm::mat4 initialTennisBallModel;
+glm::mat4 raindropModel;
 // view
 glm::mat4 view;
 // projection
@@ -86,6 +90,9 @@ gps::Model3D teapot;
 gps::Model3D scene;
 gps::Model3D tennis_ball;
 gps::Model3D screenQuad;
+gps::Model3D raindrop_obj;
+gps::Model3D scena_doar_copaci;
+gps::Model3D rain_instanced;
 GLfloat angle;
 
 // shaders
@@ -118,6 +125,28 @@ gps::Shader screenQuadShader;
 // animatie minge de tenis 
 float deltaZ, deltaY = 3, viteza = 0.1, gravity = 0.05f;
 bool upDirection = false;
+
+// bounding boxes
+const unsigned int GROUND_LEVEL = 0;
+
+// rain 
+const unsigned int START_RAINDROP_HEIGHT = 10;
+const unsigned int NR_RAINDROPS = 20;
+// raindrops place (only near the camera; they move with the camera)
+const int RAINDROP_X = 20;
+const int RAINDROP_Z = 20; // in OpenGL, y si z sunt inversate fata de sistemul de coordonate cartezian
+const unsigned int MIN_RAINDROP_SPEED = 5.0f;
+const unsigned int MAX_RAINDROP_SPEED = 15.0f;
+// positions array
+typedef struct r {
+    glm::vec3 position;
+    float velocity;
+}Raindrop;
+std::vector<Raindrop> raindrops;
+float deltaTime;
+float currentTime, lastTime = 0.0f;
+GLuint raindropVAO, raindropVBO;
+std::vector<glm::vec2> raindropsPosOffset;
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -191,13 +220,9 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
         if (pitch < -89.0f)
             pitch = -89.0f;
 
-        printf("Mouse: %lf, %lf\n", yaw, pitch);
+        //printf("Mouse: %lf, %lf\n", yaw, pitch);
         myCamera.rotate(pitch, yaw);
         view = myCamera.getViewMatrix();
-        //myBasicShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        //lightingShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
     }
 }
@@ -207,10 +232,6 @@ void processMovement() {
 		myCamera.move(gps::MOVE_FORWARD, cameraSpeed);
 		//update view matrix
         view = myCamera.getViewMatrix();
-        //myBasicShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        //lightingShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -219,10 +240,6 @@ void processMovement() {
 		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        //myBasicShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        //lightingShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -231,10 +248,6 @@ void processMovement() {
 		myCamera.move(gps::MOVE_LEFT, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        //myBasicShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        //lightingShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -243,10 +256,6 @@ void processMovement() {
 		myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
         //update view matrix
         view = myCamera.getViewMatrix();
-        //myBasicShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(myBasicShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        //lightingShader.useShaderProgram();
-        //glUniformMatrix4fv(glGetUniformLocation(lightingShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	}
@@ -305,6 +314,8 @@ void initOpenGLState() {
 	glEnable(GL_CULL_FACE); // cull face 
 	glCullFace(GL_BACK); // cull back face
 	glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
+    glEnable(GL_BLEND); // pentru combinarea culorilor (obiecte transparente sau semi-transparente)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
 }
 
 void initModels() {
@@ -312,6 +323,8 @@ void initModels() {
     scene.LoadModel("models/Scena_Copac/Scena_2.obj");
     tennis_ball.LoadModel("models/Minge_putine_varfuri/Minge_tenis_final.obj");
     screenQuad.LoadModel("models/quad/quad.obj");
+    raindrop_obj.LoadModel("models/Raindrop/raindrop.obj");
+    scena_doar_copaci.LoadModel("models/Copaci/Locatie_copaci.obj");
     initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
@@ -468,6 +481,38 @@ void initFBO() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+// initialize raindrops positions
+float randomNumber(float min, float max) {
+    return ((float)rand() / RAND_MAX) * (max - min) + min;
+}
+void initRaindrops() {
+    Raindrop aux_raindrop;
+    for (int i = 0; i < NR_RAINDROPS; i++)
+    {
+        aux_raindrop.position = glm::vec3(myCamera.getCameraPosition().x + randomNumber(-RAINDROP_X, RAINDROP_X), START_RAINDROP_HEIGHT, myCamera.getCameraPosition().z + randomNumber(-RAINDROP_Z, RAINDROP_Z));
+        aux_raindrop.velocity = -randomNumber(MIN_RAINDROP_SPEED, MAX_RAINDROP_SPEED);
+        raindrops.push_back(aux_raindrop);
+    }
+}
+
+void initRaindropsInstanced() {
+
+    glm::vec2 aux_pos;
+    for (int i = 0; i < NR_RAINDROPS; i++)
+    {
+        aux_pos = glm::vec2(randomNumber(-RAINDROP_X, RAINDROP_X), randomNumber(-RAINDROP_Z, RAINDROP_Z));
+        raindropsPosOffset.push_back(aux_pos);
+    }
+}
+
+void setupRaindropsAttributes()
+{
+    rain_instanced.LoadModel("models/Raindrop/raindrop.obj");
+    initRaindropsInstanced();
+    rain_instanced.configureInstancedArray(raindropsPosOffset, NR_RAINDROPS);
+
+}
+
 glm::mat4 computeLightSpaceTrMatrix() { 
     glm::mat4 lightView = glm::lookAt(directionalLightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); 
     const GLfloat near_plane = 0.1f, far_plane = 400.0f; 
@@ -521,7 +566,7 @@ void renderField(gps::Shader shader, bool depthPass) {
     if (!depthPass)
     {
         view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
@@ -567,19 +612,91 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
 
 }
 
+void renderRain(gps::Shader shader) {
+    shader.useShaderProgram();
+    //view = myCamera.getViewMatrix();
+    //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    currentTime = glfwGetTime();
+    deltaTime = currentTime - lastTime; 
+    lastTime = currentTime;
+    //printf("Position raindrop: %f, %f, %f, %f\n", raindrops.at(0).position.x, raindrops.at(0).position.y, raindrops.at(0).position.z, raindrops.at(0).velocity);
+    for (int i = 0; i<NR_RAINDROPS; i++)
+    {
+        
+        raindrops[i].position.y += raindrops[i].velocity / 10; //* deltaTime; // we try to simulate the real movement of a raindrop based on it's speed and the time passed from the last time the scene was rendered
+        if (raindrops[i].position.y < GROUND_LEVEL) {
+            raindrops[i].position.x = myCamera.getCameraPosition().x + randomNumber(-RAINDROP_X, RAINDROP_X);
+            raindrops[i].position.y = START_RAINDROP_HEIGHT;
+            raindrops[i].position.z = myCamera.getCameraPosition().z + randomNumber(-RAINDROP_Z, RAINDROP_Z);
+        }
+
+        //printf("Position raindrop: %f, %f, %f\n", drop.position.x, drop.position.y, drop.position.z);
+        view = myCamera.getViewMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+        raindropModel = glm::translate(glm::mat4(1.0f), raindrops[i].position);
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(raindropModel));
+
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix)); 
+
+        raindrop_obj.Draw(shader);
+
+    }
+    
+}
+
+void renderRainInstanced(gps::Shader shader) {
+    view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+    raindropModel = glm::identity<glm::mat4>();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(raindropModel));
+
+    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    glUniform3fv(glGetUniformLocation(shader.shaderProgram, "cameraPos"), 1, glm::value_ptr(myCamera.getCameraPosition()));
+    glUniform1f(glGetUniformLocation(shader.shaderProgram, "time"), glfwGetTime());
+    rain_instanced.DrawRain(shader, NR_RAINDROPS);
+}
+
 void renderSkybox(gps::Shader shader) {
     shader.useShaderProgram();
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     mySkyBox.Draw(skyboxShader, view, projection);
 }
 
+void renderTrees(gps::Shader shader, bool depthPass) {
+    shader.useShaderProgram();
+
+    bindShadowMap(shader);
+
+    sceneModel = glm::mat4(1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
+
+    if (!depthPass)
+    {
+        view = myCamera.getViewMatrix();
+        //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
+
+    }
+
+    glDisable(GL_CULL_FACE); 
+    scena_doar_copaci.Draw(shader);
+    glEnable(GL_CULL_FACE);
+}
+
 void drawObjects(gps::Shader shader, bool depthPass)
 {
-    renderTeapot(depthPass ? shader : lightingShader, depthPass);
+    renderTeapot(depthPass ? shader : lightingShader, depthPass); 
     renderField(depthPass ? shader : lightingShader, depthPass);
-    renderTennisBall(depthPass ? shader : lightingShader, depthPass);
+    renderTennisBall(depthPass ? shader : lightingShader, depthPass); 
+    renderTrees(depthPass ? shader : lightingShader, depthPass); 
     if (!depthPass)
-        renderSkybox(skyboxShader);
+    {
+        renderSkybox(skyboxShader); 
+        renderRain(myBasicShader); 
+    }
 }
 
 void renderScene() {
@@ -645,6 +762,8 @@ int main(int argc, const char * argv[]) {
     initLightUniformsForShader(lightingShader);
     initSkybox();
     initFBO();
+    initRaindrops();
+    setupRaindropsAttributes();
     setWindowCallbacks();
 
     glfwSetInputMode(myWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);

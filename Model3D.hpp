@@ -23,6 +23,10 @@ namespace gps {
 
 		void Draw(gps::Shader shaderProgram);
 
+		// for simulating rain
+		void configureInstancedArray(std::vector<glm::vec2> positions, int nrInstances);
+		void DrawRain(gps::Shader shaderProgram,int nrInstances);
+
     private:
 		// Component meshes - group of objects
         std::vector<gps::Mesh> meshes;
@@ -37,6 +41,8 @@ namespace gps {
 
 		// Reads the pixel data from an image file and loads it into the video memory
 		GLuint ReadTextureFromFile(const char* file_name);
+
+		GLuint vbo_instanced;
     };
 }
 
