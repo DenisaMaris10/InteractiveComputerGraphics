@@ -82,10 +82,7 @@ GLint positionalLightColorLoc4;
 // camera
 gps::Camera myCamera(
     glm::vec3(-20.0f, 3.0f, 3.0f),
-    //glm::vec3(0.0f, 0.75f, 3.0f),
-    //glm::vec3(0.0f, 0.0f, -10.0f),
-    //glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::vec3(-30.0f, 0.0f, 0.0f),
+    glm::vec3(10.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 
 GLfloat cameraSpeed = 0.1f;
@@ -110,7 +107,7 @@ gps::Shader myBasicShader;
 
 // pentru miscarea mouse-ului
 float speed = 0.01; //viteza deplasare
-float pitch, yaw;
+float pitch, yaw; // pitch = rotatia fata de axa z, yaw = rotatia fata de axa y
 float prevX = 400, prevY = 300;
 float sensitivity = 0.01f;
 
@@ -171,6 +168,35 @@ gps::CarCamera carCamera(
     glm::vec3(0.0f, 1.0f, 0.0f));
 glm::vec3 carBlenderPosition(0.0f, -1.0f, -20.0f);
 
+// Sine Waves
+gps::Shader basicWaveShader;
+
+const float GRID_WIDTH = 10.0f;
+const float GRID_HEIGHT = 10.0f;
+const int GRID_NUM_POINTS_WIDTH = 50;
+const int GRID_NUM_POINTS_HEIGHT = 50;
+
+//VBO, EBO and VAO
+GLuint gridPointsVBO;
+GLuint gridTrianglesEBO;
+GLuint gridVAO;
+
+//texture
+const float textureRepeatU = 1.0f; //number of times to repeat seamless texture on u axis
+const float textureRepeatV = 1.0f; //number of times to repeat seamless texture on v axis
+GLuint gridTexture;
+GLint gridTextureLoc;
+
+//simulation time
+float simTime;
+GLint simTimeLoc;
+
+//light
+GLint lightDirLoc;
+//GLint lightColorLoc;
+glm::vec3 lightDir;
+glm::vec3 lightColor;
+
 GLenum glCheckError_(const char *file, int line)
 {
 	GLenum errorCode;
@@ -224,6 +250,11 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
         prevX = xpos;
         prevY = ypos;
         firstMouseMove = false;
+
+        //Get initial camera orientation matrix
+        glm::mat4 orientationMatrix = myCamera.getViewMatrix();
+        yaw = -glm::degrees(atan2(-orientationMatrix[0][2], orientationMatrix[2][2])); 
+        pitch = -glm::degrees(asin(orientationMatrix[1][2])); 
     }
     else {
 
@@ -290,11 +321,11 @@ void processMovement() {
         // update model matrix for teapot
         model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
 
-        static int i = 0;
-        i = (i + 1) % 4;;
-        glm::vec3 positionalLightDir[] = { glm::vec3(8.0f, 7.0f, -7.0f), glm::vec3(8.0f, 7.0f, 7.0f), glm::vec3(-8.0f, 7.0f, 7.0f),  glm::vec3(-8.0f, 7.0f, -7.0f) }; //  red
+        //static int i = 0;
+        //i = (i + 1) % 4;;
+        //glm::vec3 positionalLightDir[] = { glm::vec3(8.0f, 7.0f, -7.0f), glm::vec3(8.0f, 7.0f, 7.0f), glm::vec3(-8.0f, 7.0f, 7.0f),  glm::vec3(-8.0f, 7.0f, -7.0f) }; //  red
 
-        model = glm::translate(positionalLightDir[i]) * model;
+        //model = glm::translate(positionalLightDir[i]) * model;
         // update normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
     }
@@ -388,7 +419,8 @@ void initShaders() {
     lightingShader.loadShader("shaders/lightingShader.vert", "shaders/lightingShader.frag");
     depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
     screenQuadShader.loadShader("shaders/screenQuad.vert", "shaders/screenQuad.frag");
-    treeShader.loadShader("shaders/treeShader.vert", "shaders/treeShader.frag");
+    treeShader.loadShader("shaders/treeShader.vert", "shaders/treeShader.frag"); 
+    basicWaveShader.loadShader("shaders/basicWave.vert", "shaders/basicWave.frag");
 }
 
 void initUniforms(gps::Shader myBasicShader) {
@@ -556,6 +588,112 @@ void initRaindropsInstanced() {
         aux_pos = glm::vec2(randomNumber(-RAINDROP_X, RAINDROP_X), randomNumber(-RAINDROP_Z, RAINDROP_Z));
         raindropsPosOffset.push_back(aux_pos);
     }
+}
+
+void initSineWavesVBOs() {
+    glGenVertexArrays(1, &gridVAO);
+    glBindVertexArray(gridVAO);
+
+    //prepare vertex data to send to shader
+    static GLfloat vertexData[GRID_NUM_POINTS_WIDTH * GRID_NUM_POINTS_HEIGHT * 4];
+
+    //for each vertex in grid
+    for (unsigned int i = 0; i < GRID_NUM_POINTS_HEIGHT; i++) {
+        for (unsigned int j = 0; j < GRID_NUM_POINTS_WIDTH; j++) {
+
+            //tex coords
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j * textureRepeatU / (float)(GRID_NUM_POINTS_WIDTH - 1);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = textureRepeatV - i * textureRepeatV / (float)(GRID_NUM_POINTS_HEIGHT - 1);
+            //xy position indices in grid (for computing sine function)
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j + 0);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i + 0);
+        }
+    }
+
+    glGenBuffers(1, &gridPointsVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, gridPointsVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
+
+    //prepare triangle indices to send to shader
+    static GLuint triangleIndices[(GRID_NUM_POINTS_WIDTH - 1) * (GRID_NUM_POINTS_HEIGHT - 1) * 2 * 3];
+
+    //for each square/rectangle in grid (each four neighboring points)
+    for (unsigned int i = 0; i < GRID_NUM_POINTS_HEIGHT - 1; i++) {
+        for (unsigned int j = 0; j < GRID_NUM_POINTS_WIDTH - 1; j++) {
+
+            // setam varfurile pentru 2 triunghiuri => de asta mergem din 6 in 6 (2*3)
+            //lower triangle
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j)] = i * GRID_NUM_POINTS_WIDTH + j;
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j) + 1] = (i + 1) * GRID_NUM_POINTS_WIDTH + j;
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j) + 2] = (i + 1) * GRID_NUM_POINTS_WIDTH + j + 1;
+
+            //upper triangle
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j) + 3] = i * GRID_NUM_POINTS_WIDTH + j;
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j) + 4] = (i + 1) * GRID_NUM_POINTS_WIDTH + j + 1;
+            triangleIndices[6 * (i * (GRID_NUM_POINTS_WIDTH - 1) + j) + 5] = i * GRID_NUM_POINTS_WIDTH + j + 1;
+        }
+    }
+
+    glGenBuffers(1, &gridTrianglesEBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gridTrianglesEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangleIndices), triangleIndices, GL_STATIC_DRAW);
+
+    //split vertex attributes
+
+    //tex coords
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    //grid XY indices
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+
+void initUniformsForSineWaves(gps::Shader myBasicShader) {
+    myBasicShader.useShaderProgram();
+
+    // create model matrix for grid
+    model = glm::mat4(1.0f);
+    modelLoc = glGetUniformLocation(myBasicShader.shaderProgram, "model");
+
+    // get view matrix for current camera
+    view = myCamera.getViewMatrix();
+    viewLoc = glGetUniformLocation(myBasicShader.shaderProgram, "view");
+    // send view matrix to shader
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+    // compute normal matrix grid
+    normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
+    normalMatrixLoc = glGetUniformLocation(myBasicShader.shaderProgram, "normalMatrix");
+
+    // create projection matrix
+    projection = glm::perspective(glm::radians(45.0f),
+        (float)myWindow.getWindowDimensions().width / (float)myWindow.getWindowDimensions().height,
+        0.1f, 50.0f);
+    projectionLoc = glGetUniformLocation(myBasicShader.shaderProgram, "projection");
+    // send projection matrix to shader
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    //set the light direction (direction towards the light)
+    lightDir = glm::vec3(0.0f, 1.0f, 1.0f);
+    lightDirLoc = glGetUniformLocation(myBasicShader.shaderProgram, "lightDir");
+    // send light dir to shader
+    glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(lightDir, 1.0f))));
+
+    //set light color
+    lightColor = glm::vec3(1.0f, 1.0f, 1.0f); //white light
+    lightColorLoc = glGetUniformLocation(myBasicShader.shaderProgram, "lightColor");
+    // send light color to shader
+    glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+
+    gridTextureLoc = glGetUniformLocation(myBasicShader.shaderProgram, "diffuseTexture");
+    glm::vec2 gridSize{ GRID_NUM_POINTS_WIDTH, GRID_NUM_POINTS_HEIGHT };
+    glUniform2fv(glGetUniformLocation(myBasicShader.shaderProgram, "gridSize"), 1, glm::value_ptr(gridSize));
+    glm::vec2 gridDimensions{ GRID_WIDTH, GRID_HEIGHT };
+    glUniform2fv(glGetUniformLocation(myBasicShader.shaderProgram, "gridDimensions"), 1, glm::value_ptr(gridDimensions));
+
+    simTimeLoc = glGetUniformLocation(myBasicShader.shaderProgram, "time");
 }
 
 void setupRaindropsAttributes()
@@ -743,17 +881,10 @@ void renderCar(gps::Shader shader, bool depthPass) {
     shader.useShaderProgram();
 
     bindShadowMap(shader);
-
-    //printf("Car camera position: %f, %f, %f\n", carCamera.getCameraPosition().x, carCamera.getCameraPosition().y, carCamera.getCameraPosition().z);
-    /*carModel = glm::translate(carModel, carCamera.getCameraPosition());
-    carModel = glm::translate(glm::mat4(1.0f), -(carBlenderPosition + carCamera.getCameraPosition()));
-    carModel = glm::rotate(carModel, glm::radians(carCamera.carYAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    carModel = glm::translate(carModel, (carBlenderPosition + carCamera.getCameraPosition()));*/
     
-    //auto carAngle = glm::orientedAngle(carCamera.cameraFrontDirection, glm::vec3(0, 0, 1), glm::vec3(0, 1, 0));
-    printf("Car angle: %f\n", carCamera.carYAngle);
+    //printf("Car angle: %f\n", carCamera.carYAngle);
 
-    carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition);
+    carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition); 
     carModel = glm::translate(carModel, carCamera.getCameraPosition());
     carModel = glm::rotate(carModel, glm::pi<float>() - carCamera.carYAngle, glm::vec3(0, 1, 0));
 
@@ -798,19 +929,116 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
     glEnable(GL_CULL_FACE);
 }
 
+void renderSineWaves(gps::Shader shader) {
+
+    // select active shader program
+    shader.useShaderProgram();
+
+    //update view matrix
+    view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+    // send light dir to shader
+    //glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(lightDir, 1.0f))));
+
+    //send grid model matrix data to shader
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+    // compute normal matrix for grid
+    normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
+
+    //send grid normal matrix data to shader
+    glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+    //send texture to shader
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gridTexture);
+    glUniform1i(gridTextureLoc, 0);
+
+    //send sim time
+    glUniform1f(simTimeLoc, simTime);
+
+    glBindVertexArray(gridVAO);
+
+    // draw grid
+    glDrawElements(GL_TRIANGLES, (GRID_NUM_POINTS_WIDTH - 1) * (GRID_NUM_POINTS_HEIGHT - 1) * 2 * 3, GL_UNSIGNED_INT, 0);
+    //glDrawArrays(GL_POINTS, 0, GRID_NUM_POINTS_WIDTH * GRID_NUM_POINTS_HEIGHT);
+
+}
+
 void drawObjects(gps::Shader shader, bool depthPass)
 {
-    //renderTeapot(depthPass ? shader : lightingShader, depthPass); 
-    renderField(depthPass ? shader : lightingShader, depthPass);
-    renderTennisBall(depthPass ? shader : lightingShader, depthPass); 
-    renderTrees(depthPass ? shader : lightingShader, depthPass);  
-    renderCar(depthPass ? shader : lightingShader, depthPass);  
+    renderTeapot(depthPass ? shader : lightingShader, depthPass);  
+    renderField(depthPass ? shader : lightingShader, depthPass); 
+    renderTennisBall(depthPass ? shader : lightingShader, depthPass);  
+    renderTrees(depthPass ? shader : lightingShader, depthPass);   
+    renderCar(depthPass ? shader : lightingShader, depthPass);   
+    renderSineWaves(basicWaveShader);
     //renderOneTree(depthPass ? shader : treeShader, depthPass);
     if (!depthPass)
     {
         renderSkybox(skyboxShader); 
         renderRain(myBasicShader); 
     }
+}
+
+GLuint initTexture(const char* file_name) {
+
+    int x, y, n;
+    int force_channels = 4;
+    unsigned char* image_data = stbi_load(file_name, &x, &y, &n, force_channels);
+    if (!image_data) {
+        fprintf(stderr, "ERROR: could not load %s\n", file_name);
+        return false;
+    }
+    // NPOT check
+    if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
+        fprintf(
+            stderr, "WARNING: texture %s is not power-of-2 dimensions\n", file_name
+        );
+    }
+
+    int width_in_bytes = x * 4;
+    unsigned char* top = NULL;
+    unsigned char* bottom = NULL;
+    unsigned char temp = 0;
+    int half_height = y / 2;
+
+    for (int row = 0; row < half_height; row++) {
+        top = image_data + row * width_in_bytes;
+        bottom = image_data + (y - row - 1) * width_in_bytes;
+        for (int col = 0; col < width_in_bytes; col++) {
+            temp = *top;
+            *top = *bottom;
+            *bottom = temp;
+            top++;
+            bottom++;
+        }
+    }
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_SRGB, //GL_SRGB,//GL_RGBA,
+        x,
+        y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        image_data
+    );
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return textureID;
 }
 
 void renderScene() {
@@ -852,6 +1080,10 @@ void renderScene() {
 
         drawObjects(depthMapShader, false);
     }
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //// render the grid
+    //renderSineWaves(basicWaveShader);
 
 }
 
@@ -870,9 +1102,16 @@ int main(int argc, const char * argv[]) {
     }
 
     initOpenGLState();
+    initSineWavesVBOs();
+    gridTexture = initTexture("textures/water.png");
 	initModels();
 	initShaders();
+    initUniformsForSineWaves(basicWaveShader);
+    printf("SineWaves\n");
+    glCheckError();
 	initUniforms(myBasicShader);
+    printf("Basic");
+    glCheckError();
     initLightUniformsForShader(lightingShader);
     initLightUniformsForShader(treeShader);
     initSkybox();
@@ -888,6 +1127,7 @@ int main(int argc, const char * argv[]) {
 	while (!glfwWindowShouldClose(myWindow.getWindow())) {
         processMovement();
 	    renderScene();
+        simTime += 0.007f;
 
 		glfwPollEvents();
 		glfwSwapBuffers(myWindow.getWindow());
