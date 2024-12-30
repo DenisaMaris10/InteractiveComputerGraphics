@@ -34,6 +34,8 @@ glm::mat4 sceneModel;
 glm::mat4 tennisBallModel;
 glm::mat4 initialTennisBallModel;
 glm::mat4 raindropModel;
+glm::mat4 treeModel;
+glm::mat4 carModel;
 // view
 glm::mat4 view;
 // projection
@@ -42,6 +44,8 @@ glm::mat4 projection;
 glm::mat3 normalMatrix;
 glm::mat3 sceneNormalMatrix;
 glm::mat3 tennisBallNormalMatrix;
+glm::mat3 treeNormalMatrix;
+glm::mat3 carNormalMatrix;
 
 // light parameters
 glm::vec3 directionalLightDir;
@@ -78,10 +82,14 @@ GLint positionalLightColorLoc4;
 // camera
 gps::Camera myCamera(
     glm::vec3(-20.0f, 3.0f, 3.0f),
-    glm::vec3(0.0f, 0.0f, -10.0f),
+    //glm::vec3(0.0f, 0.75f, 3.0f),
+    //glm::vec3(0.0f, 0.0f, -10.0f),
+    //glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::vec3(-30.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 
 GLfloat cameraSpeed = 0.1f;
+bool canFly = true; // true -> camera se poate deplasa si sus, jos; false -> camera se poate misca doar inainte, inapoi, stanga, dreapta 
 
 GLboolean pressedKeys[1024];
 
@@ -93,6 +101,8 @@ gps::Model3D screenQuad;
 gps::Model3D raindrop_obj;
 gps::Model3D scena_doar_copaci;
 gps::Model3D rain_instanced;
+gps::Model3D car;
+gps::Model3D oneTree;
 GLfloat angle;
 
 // shaders
@@ -147,6 +157,19 @@ float deltaTime;
 float currentTime, lastTime = 0.0f;
 GLuint raindropVAO, raindropVBO;
 std::vector<glm::vec2> raindropsPosOffset;
+
+// tree rotation after camera
+float treeRotationAngle;
+glm::vec3 cameraUpWorldSpace;
+gps::Shader treeShader;
+
+//dir masina
+float dirX, dirZ;
+gps::CarCamera carCamera(
+    glm::vec3(0.0f, 0.0f, 1.0f),
+    glm::vec3(0.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 1.0f, 0.0f));
+glm::vec3 carBlenderPosition(0.0f, -1.0f, -20.0f);
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -229,7 +252,7 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 
 void processMovement() {
 	if (pressedKeys[GLFW_KEY_W]) {
-		myCamera.move(gps::MOVE_FORWARD, cameraSpeed);
+		myCamera.move(gps::MOVE_FORWARD, cameraSpeed, canFly);
 		//update view matrix
         view = myCamera.getViewMatrix();
         // compute normal matrix for teapot
@@ -237,7 +260,7 @@ void processMovement() {
 	}
 
 	if (pressedKeys[GLFW_KEY_S]) {
-		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
+		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed, canFly);
         //update view matrix
         view = myCamera.getViewMatrix();
         // compute normal matrix for teapot
@@ -245,19 +268,21 @@ void processMovement() {
 	}
 
 	if (pressedKeys[GLFW_KEY_A]) {
-		myCamera.move(gps::MOVE_LEFT, cameraSpeed);
+		myCamera.move(gps::MOVE_LEFT, cameraSpeed, canFly);
         //update view matrix
         view = myCamera.getViewMatrix();
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
+        treeRotationAngle -= 15*cameraSpeed;
 	}
 
 	if (pressedKeys[GLFW_KEY_D]) {
-		myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
+		myCamera.move(gps::MOVE_RIGHT, cameraSpeed, canFly);
         //update view matrix
         view = myCamera.getViewMatrix();
         // compute normal matrix for teapot
         normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
+        treeRotationAngle += 15*cameraSpeed;
 	}
 
     if (pressedKeys[GLFW_KEY_Q]) {
@@ -293,6 +318,31 @@ void processMovement() {
     if (pressedKeys[GLFW_KEY_M]) {
         showDepthMap = !showDepthMap;
     }
+
+    if (pressedKeys[GLFW_KEY_U]) {
+        canFly = true;
+    }
+
+    if (pressedKeys[GLFW_KEY_I]) {
+        canFly = false;
+    }
+
+    if (pressedKeys[GLFW_KEY_UP]) {
+        carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+    }
+
+    if (pressedKeys[GLFW_KEY_DOWN]) {
+        carCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false); 
+    }
+
+    if (pressedKeys[GLFW_KEY_RIGHT]) {
+        carCamera.move(gps::MOVE_RIGHT, cameraSpeed, false);
+    }
+
+    if (pressedKeys[GLFW_KEY_LEFT]) {
+        carCamera.move(gps::MOVE_LEFT, cameraSpeed, false);
+    }
+
 }
 
 void initOpenGLWindow() {
@@ -325,7 +375,9 @@ void initModels() {
     screenQuad.LoadModel("models/quad/quad.obj");
     raindrop_obj.LoadModel("models/Raindrop/raindrop.obj");
     scena_doar_copaci.LoadModel("models/Copaci/Locatie_copaci.obj");
-    initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
+    car.LoadModel("models/Masina/Masina_texturi_bune.obj");
+    oneTree.LoadModel("models/Un_singur_copac/Un_singur_copac.obj");
+    //initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
 void initShaders() {
@@ -336,6 +388,7 @@ void initShaders() {
     lightingShader.loadShader("shaders/lightingShader.vert", "shaders/lightingShader.frag");
     depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
     screenQuadShader.loadShader("shaders/screenQuad.vert", "shaders/screenQuad.frag");
+    treeShader.loadShader("shaders/treeShader.vert", "shaders/treeShader.frag");
 }
 
 void initUniforms(gps::Shader myBasicShader) {
@@ -566,7 +619,7 @@ void renderField(gps::Shader shader, bool depthPass) {
     if (!depthPass)
     {
         view = myCamera.getViewMatrix();
-        //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
@@ -669,14 +722,14 @@ void renderTrees(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader);
 
+    
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
-
     if (!depthPass)
     {
         view = myCamera.getViewMatrix();
-        //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * treeModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
     }
@@ -686,12 +739,73 @@ void renderTrees(gps::Shader shader, bool depthPass) {
     glEnable(GL_CULL_FACE);
 }
 
+void renderCar(gps::Shader shader, bool depthPass) {
+    shader.useShaderProgram();
+
+    bindShadowMap(shader);
+
+    //printf("Car camera position: %f, %f, %f\n", carCamera.getCameraPosition().x, carCamera.getCameraPosition().y, carCamera.getCameraPosition().z);
+    /*carModel = glm::translate(carModel, carCamera.getCameraPosition());
+    carModel = glm::translate(glm::mat4(1.0f), -(carBlenderPosition + carCamera.getCameraPosition()));
+    carModel = glm::rotate(carModel, glm::radians(carCamera.carYAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+    carModel = glm::translate(carModel, (carBlenderPosition + carCamera.getCameraPosition()));*/
+    
+    //auto carAngle = glm::orientedAngle(carCamera.cameraFrontDirection, glm::vec3(0, 0, 1), glm::vec3(0, 1, 0));
+    printf("Car angle: %f\n", carCamera.carYAngle);
+
+    carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition);
+    carModel = glm::translate(carModel, carCamera.getCameraPosition());
+    carModel = glm::rotate(carModel, glm::pi<float>() - carCamera.carYAngle, glm::vec3(0, 1, 0));
+
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(carModel));
+
+    view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+    if (!depthPass)
+    {
+        
+        carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(carNormalMatrix));
+
+    }
+
+    glDisable(GL_CULL_FACE); 
+    car.Draw(shader);
+    glEnable(GL_CULL_FACE); 
+}
+
+void renderOneTree(gps::Shader shader, bool depthPass) {
+    shader.useShaderProgram();
+
+    bindShadowMap(shader);
+
+    //treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 2,-20));
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(treeModel));
+
+    if (!depthPass)
+    {
+        view = myCamera.getViewMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        treeNormalMatrix = glm::mat3(glm::inverseTranspose(view * treeModel));
+        glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(treeNormalMatrix));
+
+    }
+
+    glDisable(GL_CULL_FACE);
+    oneTree.Draw(shader);
+    glEnable(GL_CULL_FACE);
+}
+
 void drawObjects(gps::Shader shader, bool depthPass)
 {
-    renderTeapot(depthPass ? shader : lightingShader, depthPass); 
+    //renderTeapot(depthPass ? shader : lightingShader, depthPass); 
     renderField(depthPass ? shader : lightingShader, depthPass);
     renderTennisBall(depthPass ? shader : lightingShader, depthPass); 
-    renderTrees(depthPass ? shader : lightingShader, depthPass); 
+    renderTrees(depthPass ? shader : lightingShader, depthPass);  
+    renderCar(depthPass ? shader : lightingShader, depthPass);  
+    //renderOneTree(depthPass ? shader : treeShader, depthPass);
     if (!depthPass)
     {
         renderSkybox(skyboxShader); 
@@ -700,7 +814,7 @@ void drawObjects(gps::Shader shader, bool depthPass)
 }
 
 void renderScene() {
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     // rasterizarea in harta de adancime
     depthMapShader.useShaderProgram(); 
     glUniformMatrix4fv(glGetUniformLocation(depthMapShader.shaderProgram, "lightSpaceTrMatrix"), 1, GL_FALSE, glm::value_ptr(computeLightSpaceTrMatrix()));
@@ -760,6 +874,7 @@ int main(int argc, const char * argv[]) {
 	initShaders();
 	initUniforms(myBasicShader);
     initLightUniformsForShader(lightingShader);
+    initLightUniformsForShader(treeShader);
     initSkybox();
     initFBO();
     initRaindrops();
