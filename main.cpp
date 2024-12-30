@@ -167,14 +167,15 @@ gps::CarCamera carCamera(
     glm::vec3(0.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 glm::vec3 carBlenderPosition(0.0f, -1.0f, -20.0f);
+bool canDrive = false;
 
 // Sine Waves
 gps::Shader basicWaveShader;
 
-const float GRID_WIDTH = 10.0f;
-const float GRID_HEIGHT = 10.0f;
-const int GRID_NUM_POINTS_WIDTH = 50;
-const int GRID_NUM_POINTS_HEIGHT = 50;
+const float GRID_WIDTH = 340.0f;//10.0f;
+const float GRID_HEIGHT = 280;//10.0f;
+const int GRID_NUM_POINTS_WIDTH = 150;
+const int GRID_NUM_POINTS_HEIGHT = 150;
 
 //VBO, EBO and VAO
 GLuint gridPointsVBO;
@@ -182,8 +183,9 @@ GLuint gridTrianglesEBO;
 GLuint gridVAO;
 
 //texture
-const float textureRepeatU = 1.0f; //number of times to repeat seamless texture on u axis
-const float textureRepeatV = 1.0f; //number of times to repeat seamless texture on v axis
+const float textureRepeatU = 2.0f; //number of times to repeat seamless texture on u axis
+const float textureRepeatV = 2.0f; //number of times to repeat seamless texture on v axis
+const float waterYPos = -1.2f;
 GLuint gridTexture;
 GLint gridTextureLoc;
 
@@ -228,11 +230,31 @@ GLenum glCheckError_(const char *file, int line)
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
 	fprintf(stdout, "Window resized! New width: %d , and height: %d\n", width, height);
 	//TODO
+    fprintf(stdout, "Window resized! New width: %d , and height: %d\n", width, height);
+    WindowDimensions wd;
+    glfwGetFramebufferSize(myWindow.getWindow(), &wd.width, &wd.height);
+    myWindow.setWindowDimensions(wd);
+
+    // create projection matrix
+    projection = glm::perspective(glm::radians(45.0f),
+        (float)wd.width / (float)wd.height,
+        0.1f, 400.0f);
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glViewport(0, 0, wd.width, wd.height);
 }
 
 void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+
+    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        if (!canDrive) {
+            myCamera.setCameraPosition(carCamera.getCameraPosition() + carBlenderPosition + glm::vec3(-0.7f, 1.5f, -0.0f));
+            //myCamera.setCameraFrontDirection(carCamera.getCameraFrontDirection());
+        }
+        canDrive = !canDrive;
     }
 
 	if (key >= 0 && key < 1024) {
@@ -279,6 +301,10 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
         view = myCamera.getViewMatrix();
         normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
     }
+}
+
+float euclideanDistance(glm::vec3 a, glm::vec3 b) {
+    return std::sqrt(std::pow((a.x - b.x), 2) + std::pow((a.y - b.y), 2) + std::pow((a.z-b.z), 2));
 }
 
 void processMovement() {
@@ -359,19 +385,29 @@ void processMovement() {
     }
 
     if (pressedKeys[GLFW_KEY_UP]) {
-        carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+        if (canDrive) {
+            carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+        }
     }
 
     if (pressedKeys[GLFW_KEY_DOWN]) {
-        carCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false); 
+        if (canDrive) {
+            carCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false);
+            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+        }
     }
 
     if (pressedKeys[GLFW_KEY_RIGHT]) {
-        carCamera.move(gps::MOVE_RIGHT, cameraSpeed, false);
+        if (canDrive) {
+            carCamera.move(gps::MOVE_RIGHT, cameraSpeed, false);
+        }
     }
 
     if (pressedKeys[GLFW_KEY_LEFT]) {
-        carCamera.move(gps::MOVE_LEFT, cameraSpeed, false);
+        if (canDrive) {
+            carCamera.move(gps::MOVE_LEFT, cameraSpeed, false);
+        }
     }
 
 }
@@ -605,8 +641,8 @@ void initSineWavesVBOs() {
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j * textureRepeatU / (float)(GRID_NUM_POINTS_WIDTH - 1);
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = textureRepeatV - i * textureRepeatV / (float)(GRID_NUM_POINTS_HEIGHT - 1);
             //xy position indices in grid (for computing sine function)
-            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j + 0);
-            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i + 0);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j + 60);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i + 75);
         }
     }
 
@@ -670,7 +706,7 @@ void initUniformsForSineWaves(gps::Shader myBasicShader) {
     // create projection matrix
     projection = glm::perspective(glm::radians(45.0f),
         (float)myWindow.getWindowDimensions().width / (float)myWindow.getWindowDimensions().height,
-        0.1f, 50.0f);
+        0.1f, 400.0f);
     projectionLoc = glGetUniformLocation(myBasicShader.shaderProgram, "projection");
     // send projection matrix to shader
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -1103,7 +1139,7 @@ int main(int argc, const char * argv[]) {
 
     initOpenGLState();
     initSineWavesVBOs();
-    gridTexture = initTexture("textures/water.png");
+    gridTexture = initTexture("textures/water_texture.jpg");
 	initModels();
 	initShaders();
     initUniformsForSineWaves(basicWaveShader);
@@ -1126,6 +1162,14 @@ int main(int argc, const char * argv[]) {
 	// application loop
 	while (!glfwWindowShouldClose(myWindow.getWindow())) {
         processMovement();
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition() + carBlenderPosition);
+        printf("Distanta: %f\n", distance);
+        if (distance < 5.0f) {
+            canDrive = true;
+        }
+        else
+            canDrive = false;
+
 	    renderScene();
         simTime += 0.007f;
 

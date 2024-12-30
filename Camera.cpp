@@ -24,6 +24,10 @@ namespace gps {
         return glm::lookAt(this->cameraPosition, this->cameraTarget, this->up);
     }
 
+    glm::vec3 Camera::getCameraFrontDirection() {
+        return this->cameraFrontDirection;
+    }
+
     glm::vec3 Camera::getCameraPosition() {
         return this->cameraPosition;
     }
@@ -76,6 +80,14 @@ namespace gps {
         this->cameraRightDirection = -glm::normalize(right);
         this->cameraUpDirection = cross((-this->cameraFrontDirection), this->cameraRightDirection);
         this->cameraTarget = this->cameraPosition + this->cameraFrontDirection;
+    }
+
+    void Camera::setCameraPosition(glm::vec3 cameraPosition) {
+        this->cameraPosition = cameraPosition;
+    }
+
+    void Camera::setCameraFrontDirection(glm::vec3 cameraFrontDirection) {
+        this->cameraFrontDirection = cameraFrontDirection;
     }
 
     // constructorul pentru subclasa CarCamera

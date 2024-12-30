@@ -20,7 +20,7 @@ void main()
 {
 	fTexCoords = vTexCoords;
 
-	// compute uv coordinates
+	// compute uv coordinates (le aducem in intervalul [-1, 1])
 	float u = gridXY.x / (gridSize.x - 1);
 	float v = gridXY.y / (gridSize.y - 1);
 
@@ -29,12 +29,12 @@ void main()
 
 	// compute simple sine wave pattern y coordinate
 	float freq = 7.0f;
-	float ampl = 0.15f;
+	float ampl = 0.25f;
 
 	//compute position
 	//evaluate the function of the sine surface (f(u,v) = x * (1, 0, 0) + y * (0, 1, 0) + z * (0, 0, 1))
 	float x = - (gridDimensions.x / 2.0f) + (u + 1.0f) / 2.0f * gridDimensions.x;
-	float y = sin(u * freq + time) * cos(v * freq + time) * ampl;
+	float y = -1.0f + sin(u * freq + time) * cos(v * freq + time) * ampl; // 1.2f vine de la coordonata din Blender a planului cu apa (axa z)
 	float z = - (gridDimensions.y / 2.0f) + (v + 1.0f) / 2.0f * gridDimensions.y;
 
 	//compute tangent (partial derivative of f over u)
