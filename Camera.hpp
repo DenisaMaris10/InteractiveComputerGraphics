@@ -18,7 +18,9 @@ namespace gps {
         // return camera position
         glm::vec3 getCameraPosition();  
         glm::vec3 getCameraFrontDirection();  
+        glm::vec3 getCameraTarget();  
         void setCameraPosition(glm::vec3 cameraPosition);  
+        void setCameraTarget(glm::vec3 cameraTarget);  
         void setCameraFrontDirection(glm::vec3 cameraFrontDirection);  
         //update the camera internal parameters following a camera move event
         void move(MOVE_DIRECTION direction, float speed, bool canFly);
@@ -33,6 +35,7 @@ namespace gps {
         glm::vec3 cameraFrontDirection;
         glm::vec3 cameraRightDirection;
         glm::vec3 cameraUpDirection;
+        float angle = 0;
         glm::vec3 up = glm::vec3(0, 1, 0);
     };
 

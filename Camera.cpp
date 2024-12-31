@@ -32,6 +32,10 @@ namespace gps {
         return this->cameraPosition;
     }
 
+    glm::vec3 Camera::getCameraTarget() {
+        return this->cameraTarget;
+    }
+
     //update the camera internal parameters following a camera move event
     void Camera::move(MOVE_DIRECTION direction, float speed, bool canFly) {
         //TODO
@@ -86,6 +90,10 @@ namespace gps {
         this->cameraPosition = cameraPosition;
     }
 
+    void Camera::setCameraTarget(glm::vec3 cameraTarget) {
+        this->cameraTarget = cameraTarget;
+    }
+
     void Camera::setCameraFrontDirection(glm::vec3 cameraFrontDirection) {
         this->cameraFrontDirection = cameraFrontDirection;
     }
@@ -114,11 +122,15 @@ namespace gps {
         }
         else if (direction == MOVE_RIGHT)
         {
-            this->cameraFrontDirection = glm::rotate(-0.05f, glm::vec3(0, 1, 0)) * glm::vec4(this->cameraFrontDirection, 0);
+            angle -= 1;
+            this->rotate(0.0f, angle);
+            //this->cameraFrontDirection = glm::rotate(-0.05f, glm::vec3(0, 1, 0)) * glm::vec4(this->cameraFrontDirection, 0);
             this->carYAngle = glm::orientedAngle(this->cameraFrontDirection, glm::vec3(0, 0, 1), glm::vec3(0, 1, 0));
         }
         else if (direction == MOVE_LEFT)
         {
+            angle += 1;
+            this->rotate(0.0f, angle);
             this->cameraFrontDirection = glm::rotate(0.05f, glm::vec3(0, 1, 0)) * glm::vec4(this->cameraFrontDirection, 0);
             this->carYAngle = glm::orientedAngle(this->cameraFrontDirection, glm::vec3(0, 0, 1), glm::vec3(0, 1, 0));
         }

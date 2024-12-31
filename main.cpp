@@ -230,7 +230,6 @@ GLenum glCheckError_(const char *file, int line)
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
 	fprintf(stdout, "Window resized! New width: %d , and height: %d\n", width, height);
 	//TODO
-    fprintf(stdout, "Window resized! New width: %d , and height: %d\n", width, height);
     WindowDimensions wd;
     glfwGetFramebufferSize(myWindow.getWindow(), &wd.width, &wd.height);
     myWindow.setWindowDimensions(wd);
@@ -251,10 +250,13 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
         if (!canDrive) {
-            myCamera.setCameraPosition(carCamera.getCameraPosition() + carBlenderPosition + glm::vec3(-0.7f, 1.5f, -0.0f));
+            /*myCamera.setCameraPosition(carCamera.getCameraPosition() + carBlenderPosition + glm::vec3(-0.7f, 1.5f, -0.0f));
+            myCamera.setCameraFrontDirection(carCamera.getCameraFrontDirection());
+            myCamera.setCameraTarget(-carCamera.getCameraTarget());*/
             //myCamera.setCameraFrontDirection(carCamera.getCameraFrontDirection());
         }
         canDrive = !canDrive;
+        std::cout << canDrive + "\n";
     }
 
 	if (key >= 0 && key < 1024) {
@@ -387,14 +389,18 @@ void processMovement() {
     if (pressedKeys[GLFW_KEY_UP]) {
         if (canDrive) {
             carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
-            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+            /*myCamera.setCameraFrontDirection(carCamera.getCameraFrontDirection());
+            myCamera.setCameraTarget(carCamera.getCameraTarget());
+            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);*/
         }
     }
 
     if (pressedKeys[GLFW_KEY_DOWN]) {
         if (canDrive) {
             carCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false);
-            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
+            /*myCamera.setCameraFrontDirection(carCamera.getCameraFrontDirection());
+            myCamera.setCameraTarget(carCamera.getCameraTarget());
+            myCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false);*/
         }
     }
 
@@ -769,12 +775,15 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
 
     //send teapot model matrix data to shader
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     //send teapot normal matrix data to shader
     if (!depthPass) 
     {
-        view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
     }
 
@@ -790,10 +799,15 @@ void renderField(gps::Shader shader, bool depthPass) {
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
 
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
     if (!depthPass)
     {
-        view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        
         sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
@@ -827,10 +841,14 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
     //tennisBallModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(tennisBallModel));
 
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
     if (!depthPass)
     {
-        view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         tennisBallNormalMatrix = glm::mat3(glm::inverseTranspose(view * tennisBallModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(tennisBallNormalMatrix));
     }
@@ -887,6 +905,10 @@ void renderRainInstanced(gps::Shader shader) {
 
 void renderSkybox(gps::Shader shader) {
     shader.useShaderProgram();
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     mySkyBox.Draw(skyboxShader, view, projection);
 }
@@ -899,10 +921,16 @@ void renderTrees(gps::Shader shader, bool depthPass) {
     
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(sceneModel));
+
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
+    //view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     if (!depthPass)
     {
-        view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        
         sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * treeModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(sceneNormalMatrix));
 
@@ -920,12 +948,15 @@ void renderCar(gps::Shader shader, bool depthPass) {
     
     //printf("Car angle: %f\n", carCamera.carYAngle);
 
-    carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition); 
+    carModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)); 
     carModel = glm::translate(carModel, carCamera.getCameraPosition());
     carModel = glm::rotate(carModel, glm::pi<float>() - carCamera.carYAngle, glm::vec3(0, 1, 0));
 
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(carModel));
 
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
     view = myCamera.getViewMatrix();
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
@@ -947,14 +978,19 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader);
 
-    //treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
-    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 2,-20));
+    treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+    //treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 2,-20));
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(treeModel));
+
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
     if (!depthPass)
     {
-        view = myCamera.getViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        
         treeNormalMatrix = glm::mat3(glm::inverseTranspose(view * treeModel));
         glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(treeNormalMatrix));
 
@@ -971,7 +1007,10 @@ void renderSineWaves(gps::Shader shader) {
     shader.useShaderProgram();
 
     //update view matrix
-    view = myCamera.getViewMatrix();
+    if (canDrive)
+        view = carCamera.getViewMatrix();
+    else
+        view = myCamera.getViewMatrix();
     glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
     // send light dir to shader
@@ -1010,11 +1049,11 @@ void drawObjects(gps::Shader shader, bool depthPass)
     renderTrees(depthPass ? shader : lightingShader, depthPass);   
     renderCar(depthPass ? shader : lightingShader, depthPass);   
     renderSineWaves(basicWaveShader);
-    //renderOneTree(depthPass ? shader : treeShader, depthPass);
+    renderOneTree(depthPass ? shader : treeShader, depthPass);
     if (!depthPass)
     {
         renderSkybox(skyboxShader); 
-        renderRain(myBasicShader); 
+        //renderRainInstanced(myBasicShader); 
     }
 }
 
@@ -1163,14 +1202,15 @@ int main(int argc, const char * argv[]) {
 	while (!glfwWindowShouldClose(myWindow.getWindow())) {
         processMovement();
         float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition() + carBlenderPosition);
-        printf("Distanta: %f\n", distance);
-        if (distance < 5.0f) {
+        //printf("Distanta: %f\n", distance);
+       /* if (distance < 5.0f) {
             canDrive = true;
         }
         else
-            canDrive = false;
+            canDrive = false;*/
 
 	    renderScene();
+        deltaTime += 1;
         simTime += 0.007f;
 
 		glfwPollEvents();

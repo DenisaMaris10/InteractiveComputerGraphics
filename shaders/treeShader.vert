@@ -37,13 +37,20 @@ void main()
 	positionalLightPosEye3 = view * vec4(posLightDir3, 1.0f);
 	positionalLightPosEye4 = view * vec4(posLightDir4, 1.0f);
 	fNormal = normalize(normalMatrix * vNormal);
-	mat4 aux_view = view;
+	mat4 aux_view = view ;
 	aux_view[0][0] = 1.0f;
 	aux_view[1][0] = 0.0f;
 	aux_view[2][0] = 0.0f;
-	aux_view[0][2] = 0.0f;
-	aux_view[1][2] = 0.0f;
-	aux_view[2][2] = 1.0f;
+	vec3 xx = vec3(1, 0, 0);
+	vec3 yy = vec3(aux_view[0][1], aux_view[1][1], aux_view[2][1]);
+	vec3 zz = cross(xx, yy); // pwntru a pastra axele perpendiculare
+
+	aux_view[0][2]=zz.x;
+	aux_view[1][2] = zz.y;
+	aux_view[2][2]=zz.z;
+	//aux_view[0][2] = 0.0f;
+	//aux_view[1][2] = 0.0f;
+	//aux_view[2][2] = 1.0f;
 	fragPosLightSpace = lightSpaceTrMatrix * model * vec4(vPosition, 1.0f);
-	gl_Position = projection * aux_view * model * vec4(vPosition, 1.0f);
+	gl_Position = projection * aux_view * model* vec4(vPosition, 1.0f);
 }
