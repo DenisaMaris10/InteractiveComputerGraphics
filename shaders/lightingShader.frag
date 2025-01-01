@@ -132,6 +132,14 @@ float computeShadow()
 	return shadow;
 }
 
+float computeFog()
+{
+	float fogDensity = 0.05f;
+	float fragmentDistance = length(fPosEye);
+	float fogFactor = exp(-pow(fragmentDistance * fogDensity, 2));
+	return clamp(fogFactor, 0.0f, 1.0f);
+}
+
 void main() 
 {
 	// calculam lumina directionala
@@ -155,8 +163,14 @@ void main()
 	diffuse *= colorFromTexture.xyz; //texture(diffuseTexture, fragTexCoords);
 	specular *= texture(specularTexture, fragTexCoords);
 	}
+
 	float shadow = computeShadow();
 	vec3 color = min((ambient + (1.0f - shadow) * diffuse) + (1.0f - shadow) * specular, 1.0f);
+
+	float fogFactor = computeFog();
+	vec4 fogColor = vec4(0.5f, 0.5f, 0.5f, 1.0f);
+	//fColor = mix(fogColor, color, fogFactor);
     
-    fColor = vec4(color, 1.0f);
+	fColor = fogColor*(1-fogFactor) + vec4(color, colorFromTexture.a)*fogFactor;
+    //fColor = vec4(color, colorFromTexture.a);
 }
