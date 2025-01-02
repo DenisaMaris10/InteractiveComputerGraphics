@@ -21,6 +21,7 @@ uniform vec3 positionalLightColor3;
 uniform vec3 positionalLightColor4;
 uniform sampler2D diffuseTexture;
 uniform sampler2D specularTexture;
+uniform bool fog;
 
 vec3 ambient;
 float ambientStrength = 0.2f;
@@ -167,10 +168,12 @@ void main()
 	float shadow = computeShadow();
 	vec3 color = min((ambient + (1.0f - shadow) * diffuse) + (1.0f - shadow) * specular, 1.0f);
 
-	float fogFactor = computeFog();
-	vec4 fogColor = vec4(0.5f, 0.5f, 0.5f, 1.0f);
-	//fColor = mix(fogColor, color, fogFactor);
-    
-	fColor = fogColor*(1-fogFactor) + vec4(color, colorFromTexture.a)*fogFactor;
-    //fColor = vec4(color, colorFromTexture.a);
+	if(fog)
+	{
+		float fogFactor = computeFog();
+		vec4 fogColor = vec4(0.5f, 0.5f, 0.5f, 1.0f);
+		fColor = fogColor*(1-fogFactor) + vec4(color, colorFromTexture.a)*fogFactor;
+	}
+	else
+		fColor = vec4(color, colorFromTexture.a);
 }

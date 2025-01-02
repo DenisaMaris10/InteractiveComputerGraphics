@@ -32,6 +32,7 @@ namespace gps {
         GLint dirLightColorLoc, positionalLightColorLoc1, positionalLightColorLoc2, positionalLightColorLoc3, positionalLightColorLoc4;
         GLint cameraPosLoc, timeLoc, gridSizeLoc, gridDimensionsLoc, gridTextureLoc;
         GLint shadowMapLoc, lightSpaceTrMatrixLoc;
+        GLint fogLoc;
         void loadShader(std::string vertexShaderFileName, std::string fragmentShaderFileName);
         void useShaderProgram();
 
