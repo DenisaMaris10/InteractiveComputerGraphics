@@ -12,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp> //glm extension for generating common transformation matrices
 #include <glm/gtc/matrix_inverse.hpp> //glm extension for computing inverse matrices
 #include <glm/gtc/type_ptr.hpp> //glm extension for accessing the internal data structure of glm types
+#include <glm/gtx/vector_angle.hpp>
 
 #include "Window.h"
 #include "Shader.hpp"
@@ -276,6 +277,10 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         fog = !fog;
     }
 
+    if (key == GLFW_KEY_U && action == GLFW_PRESS) {
+        canFly = !canFly;
+    }
+
 	if (key >= 0 && key < 1024) {
         if (action == GLFW_PRESS) {
             pressedKeys[key] = true;
@@ -370,14 +375,6 @@ void processMovement() {
         showDepthMap = !showDepthMap;
     }
 
-    if (pressedKeys[GLFW_KEY_U]) {
-        canFly = true;
-    }
-
-    if (pressedKeys[GLFW_KEY_I]) {
-        canFly = false;
-    }
-
     if (pressedKeys[GLFW_KEY_UP]) {
         if (canDrive) {
             carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
@@ -449,13 +446,25 @@ void initModels() {
 
 void initShaders() {
 	myBasicShader.loadShader(
-        "shaders/basic.vert",
-        "shaders/basic.frag");
+        "shaders/rainInstanced.vert",
+        "shaders/rainInstanced.frag");
+   /* printf("skybox\n");
+    glCheckError();*/
     skyboxShader.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
+   /* printf("lighting\n");
+    glCheckError();*/
     lightingShader.loadShader("shaders/lightingShader.vert", "shaders/lightingShader.frag");
+    /*printf("depth\n");
+    glCheckError();*/
     depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
+    /*printf("squad\n");
+    glCheckError();*/
     screenQuadShader.loadShader("shaders/screenQuad.vert", "shaders/screenQuad.frag");
+    /*printf("tree\n");
+    glCheckError();*/
     treeShader.loadShader("shaders/treeShader.vert", "shaders/treeShader.frag"); 
+    /*printf("wave\n");
+    glCheckError();*/
     basicWaveShader.loadShader("shaders/basicWave.vert", "shaders/basicWave.frag");
 }
 
@@ -594,6 +603,7 @@ void initSkybox() {
     faces.push_back("skybox/back.tga");
     faces.push_back("skybox/front.tga");
     mySkyBox.Load(faces);
+    skyboxShader.fogLoc = glGetUniformLocation(skyboxShader.shaderProgram, "fog");
 }
 
 void initFBO() {
@@ -636,6 +646,7 @@ void initRaindropsInstanced() {
     {
         aux_pos = glm::vec2(randomNumber(-RAINDROP_X, RAINDROP_X), randomNumber(-RAINDROP_Z, RAINDROP_Z));
         raindropsPosOffset.push_back(aux_pos);
+        raindropsPosOffset.push_back(aux_pos);
     }
 }
 
@@ -653,6 +664,11 @@ void initSineWavesVBOs() {
             //tex coords
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j * textureRepeatU / (float)(GRID_NUM_POINTS_WIDTH - 1);
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = textureRepeatV - i * textureRepeatV / (float)(GRID_NUM_POINTS_HEIGHT - 1);
+            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = 0.8;
+            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = 0.8;
+            // 
+            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j / (float)(GRID_NUM_POINTS_WIDTH - 1);
+            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = i / (float)(GRID_NUM_POINTS_HEIGHT - 1);
             //xy position indices in grid (for computing sine function)
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j + 60);
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i + 75);
@@ -688,13 +704,15 @@ void initSineWavesVBOs() {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangleIndices), triangleIndices, GL_STATIC_DRAW);
 
     //split vertex attributes
-
     //tex coords
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    
     //grid XY indices
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+    
 
     glBindVertexArray(0);
 }
@@ -929,6 +947,7 @@ void renderSkybox(gps::Shader shader) {
     else
         view = myCamera.getViewMatrix();
     glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniform1i(shader.fogLoc, fog);
     mySkyBox.Draw(skyboxShader, view, projection);
 }
 
@@ -997,15 +1016,42 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader);
 
-    treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
-    //treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 2,-20));
+    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-20, 1, 0));
+    //treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+    //treeModel = glm::mat4(1.f);
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(treeModel));
 
     if (canDrive && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
-    glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glm::mat4 aux = view * treeModel;
+    glm::vec3 xMod = aux[0];
+    glm::vec3 yMod = aux[1];
+    //auto angle = glm::orientedAngle(xMod, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
+    ////std::cout << angle << std::endl;
+    //auto r = glm::normalize(glm::cross(xMod, glm::vec3(1, 0, 0)));
+    //std::cout << r.x << "," << r.y << "," << r.z << std::endl;
+
+
+
+
+    //glm::vec3 xFinal = glm::vec3(1, 0, 0);
+    //glm::vec3 yFinal = glm::rotate(yMod, -angle, glm::vec3(0, 1, 0));
+    //glm::vec3 zFinal = glm::cross(xFinal, yFinal);
+
+    glm::vec3 cr = glm::cross(glm::vec3(1, 0, 0), yMod);
+
+    glm::vec3 yFinal = yMod;
+    glm::vec3 zFinal = cr;
+    glm::vec3 xFinal = glm::cross(yFinal, zFinal);
+
+
+    aux[0] = glm::vec4(xFinal, 0);
+    aux[1] = glm::vec4(yFinal, 0);
+    aux[2] = glm::vec4(zFinal, 0);
+
+    glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(aux));
 
     if (!depthPass)
     {
@@ -1021,6 +1067,7 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 }
 
 void renderSineWaves(gps::Shader shader) {
+
 
     // select active shader program
     shader.useShaderProgram();
@@ -1046,9 +1093,9 @@ void renderSineWaves(gps::Shader shader) {
     glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
     //send texture to shader
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, gridTexture);
-    glUniform1i(shader.gridTextureLoc, 0);
+    glUniform1i(shader.gridTextureLoc, 4);
 
     //send sim time
     glUniform1f(shader.timeLoc, simTime);
@@ -1166,39 +1213,39 @@ void drawObjects(gps::Shader shader, bool depthPass)
 {
     glCheckError();
     renderTeapot(depthPass ? shader : lightingShader, depthPass);  
-    printf("Teapot\n");
-    glCheckError();
+    /*printf("Teapot\n");
+    glCheckError();*/
     renderField(depthPass ? shader : lightingShader, depthPass); 
-    printf("Field\n");
-    glCheckError();
+    /*printf("Field\n");
+    glCheckError();*/
     renderTennisBall(depthPass ? shader : lightingShader, depthPass);  
-    printf("Tennis Ball\n");
-    glCheckError();
+    /*printf("Tennis Ball\n");
+    glCheckError();*/
     renderTrees(depthPass ? shader : lightingShader, depthPass);   
-    printf("Trees\n");
-    glCheckError();
+    /*printf("Trees\n");
+    glCheckError();*/
     renderCar(depthPass ? shader : lightingShader, depthPass, car);   
-    printf("Car\n");
-    glCheckError();
+    /*printf("Car\n");
+    glCheckError();*/
     renderSineWaves(basicWaveShader);
-    printf("SineWaves\n");
-    glCheckError();
+    /*printf("SineWaves\n");
+    glCheckError();*/
     renderOneTree(depthPass ? shader : treeShader, depthPass);
-    printf("One Tree\n");
-    glCheckError();
+    /*printf("One Tree\n");
+    glCheckError();*/
     renderCarWheels(depthPass ? shader : lightingShader, depthPass);
 
     if (!depthPass)
     {
         renderSkybox(skyboxShader); 
-        printf("SkyBox\n");
-        glCheckError();
+        /*printf("SkyBox\n");
+        glCheckError();*/
         renderCar(depthPass ? shader : lightingShader, depthPass, windowsCar);
-        printf("Car windows\n");
-        glCheckError();
+        /*printf("Car windows\n");
+        glCheckError();*/
         renderRainInstanced(myBasicShader); 
-        printf("Rain\n");
-        glCheckError();
+        /*printf("Rain\n");
+        glCheckError();*/
     }
 }
 
@@ -1300,10 +1347,6 @@ void renderScene() {
 
         drawObjects(depthMapShader, false);
     }
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //// render the grid
-    //renderSineWaves(basicWaveShader);
 
 }
 

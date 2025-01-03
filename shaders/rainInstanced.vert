@@ -24,7 +24,9 @@ void main()
 	//gl_Position = vec4(0, 0, 0.1f, 1.0f) + vec4(vPosition, 0);
 	//gl_Position = vec4(0,0,0.3f, 0.f) + vec4(1*vPosition, 1.0f);
 
-	gl_Position = projection * view * vec4((vec3(iPos.x + cameraPos.x, mod(time + float(gl_InstanceID), 15.0), cameraPos + iPos.y) + vPosition), 1.0f);
+	float height = mod(time + float(gl_InstanceID), 15.0);
+
+	gl_Position = projection * view * vec4((vec3(iPos.x + cameraPos.x, height, cameraPos.z + iPos.y) + vPosition), 1.0f);
 
 	fPosition = vPosition;
 	fNormal = vNormal;

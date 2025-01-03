@@ -7,7 +7,7 @@ in vec4 positionalLightPosEye1;
 in vec4 positionalLightPosEye2; 
 in vec4 positionalLightPosEye3; 
 in vec4 positionalLightPosEye4; 
-in vec2 fragTexCoords;
+in vec2 fTexCoords;
 in vec4 fragPosLightSpace;
 
 out vec4 fColor;
@@ -20,7 +20,7 @@ uniform vec3 positionalLightColor2;
 uniform vec3 positionalLightColor3;
 uniform vec3 positionalLightColor4;
 uniform sampler2D diffuseTexture;
-uniform sampler2D specularTexture;
+//uniform sampler2D specularTexture;
 uniform bool fog;
 
 vec3 ambient;
@@ -135,7 +135,7 @@ float computeShadow()
 
 float computeFog()
 {
-	float fogDensity = 0.05f;
+	float fogDensity = 0.01f;
 	float fragmentDistance = length(fPosEye);
 	float fogFactor = exp(-pow(fragmentDistance * fogDensity, 2));
 	return clamp(fogFactor, 0.0f, 1.0f);
@@ -144,7 +144,7 @@ float computeFog()
 void main() 
 {
 	// calculam lumina directionala
-	computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
+	//computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
 	// calculam luminile pozitionale
 	computePositionalLight(ambientPos1, diffusePos1, specularPos1, positionalLightColor1, positionalLightPosEye1);
 	computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
@@ -156,13 +156,13 @@ void main()
 	specular += specularPos1 + specularPos2 + specularPos3 + specularPos4;
 	
 	//pentru harti difuze
-	vec4 colorFromTexture = texture(diffuseTexture, fragTexCoords);
+	vec4 colorFromTexture = texture(diffuseTexture, fTexCoords);
 	if(colorFromTexture.a < 0.1)
 		discard;
 	else{
-	ambient *= colorFromTexture.xyz; //texture(diffuseTexture, fragTexCoords);
-	diffuse *= colorFromTexture.xyz; //texture(diffuseTexture, fragTexCoords);
-	specular *= texture(specularTexture, fragTexCoords);
+	ambient *= colorFromTexture.xyz; //texture(diffuseTexture, fTexCoords);
+	diffuse *= colorFromTexture.xyz; //texture(diffuseTexture, fTexCoords);
+	//specular *= texture(specularTexture, fTexCoords);
 	}
 
 	float shadow = computeShadow();
@@ -176,4 +176,9 @@ void main()
 	}
 	else
 		fColor = vec4(color, colorFromTexture.a);
+
+
+ //colorFromTexture = texture(diffuseTexture, vec2(0.8, 0.9));
+	//fColor = colorFromTexture;
+	//fColor = vec4(1, 0, 0, 1);
 }

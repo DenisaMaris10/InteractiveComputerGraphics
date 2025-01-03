@@ -48,9 +48,12 @@ void main()
 	aux_view[0][2]=zz.x;
 	aux_view[1][2] = zz.y;
 	aux_view[2][2]=zz.z;
+
 	//aux_view[0][2] = 0.0f;
 	//aux_view[1][2] = 0.0f;
 	//aux_view[2][2] = 1.0f;
+
 	fragPosLightSpace = lightSpaceTrMatrix * model * vec4(vPosition, 1.0f);
-	gl_Position = projection * aux_view * model* vec4(vPosition, 1.0f);
+
+	gl_Position = projection * view * vec4(vPosition, 1.0f);
 }

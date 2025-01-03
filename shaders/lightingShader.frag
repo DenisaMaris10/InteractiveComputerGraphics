@@ -135,7 +135,7 @@ float computeShadow()
 
 float computeFog()
 {
-	float fogDensity = 0.05f;
+	float fogDensity = 0.01f;
 	float fragmentDistance = length(fPosEye);
 	float fogFactor = exp(-pow(fragmentDistance * fogDensity, 2));
 	return clamp(fogFactor, 0.0f, 1.0f);
@@ -144,7 +144,7 @@ float computeFog()
 void main() 
 {
 	// calculam lumina directionala
-	computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
+	//computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
 	// calculam luminile pozitionale
 	computePositionalLight(ambientPos1, diffusePos1, specularPos1, positionalLightColor1, positionalLightPosEye1);
 	computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
