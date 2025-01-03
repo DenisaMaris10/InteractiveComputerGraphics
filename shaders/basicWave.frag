@@ -50,7 +50,7 @@ void computeDirLightComponents(inout vec3 ambient, inout vec3 diffuse, inout vec
 	vec3 lightDirN = normalize(vec3(lightPosEye)).xyz;
 
 	//compute view direction 
-	vec3 viewDirN = normalize(fPosEye.xyz);
+	vec3 viewDirN = normalize(-fPosEye.xyz);
 		
 	//compute ambient light
 	ambient = ambientStrength * lightColor;
@@ -144,7 +144,7 @@ float computeFog()
 void main() 
 {
 	// calculam lumina directionala
-	//computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
+	computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
 	// calculam luminile pozitionale
 	computePositionalLight(ambientPos1, diffusePos1, specularPos1, positionalLightColor1, positionalLightPosEye1);
 	computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
@@ -177,8 +177,4 @@ void main()
 	else
 		fColor = vec4(color, colorFromTexture.a);
 
-
- //colorFromTexture = texture(diffuseTexture, vec2(0.8, 0.9));
-	//fColor = colorFromTexture;
-	//fColor = vec4(1, 0, 0, 1);
 }

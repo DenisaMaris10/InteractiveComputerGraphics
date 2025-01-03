@@ -37,6 +37,7 @@ glm::mat4 initialTennisBallModel;
 glm::mat4 raindropModel;
 glm::mat4 treeModel;
 glm::mat4 carModel;
+glm::mat4 waterModel;
 // view
 glm::mat4 view;
 // projection
@@ -47,9 +48,10 @@ glm::mat3 sceneNormalMatrix;
 glm::mat3 tennisBallNormalMatrix;
 glm::mat3 treeNormalMatrix;
 glm::mat3 carNormalMatrix;
+glm::mat3 waterNormalMatrix;
 
 // light parameters
-glm::vec3 directionalLightDir;
+glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 0.0f);
 glm::vec3 directionalLightColor;
 
 // positional lights parameters
@@ -281,6 +283,10 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         canFly = !canFly;
     }
 
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+        showDepthMap = !showDepthMap;
+    }
+
 	if (key >= 0 && key < 1024) {
         if (action == GLFW_PRESS) {
             pressedKeys[key] = true;
@@ -369,10 +375,6 @@ void processMovement() {
 
     if (pressedKeys[GLFW_KEY_F]) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
-
-    if (pressedKeys[GLFW_KEY_M]) {
-        showDepthMap = !showDepthMap;
     }
 
     if (pressedKeys[GLFW_KEY_UP]) {
@@ -468,12 +470,12 @@ void initShaders() {
     basicWaveShader.loadShader("shaders/basicWave.vert", "shaders/basicWave.frag");
 }
 
-void initOtherUniformsBasicShader(gps::Shader &shader) {
+void initOtherUniformsRainShader(gps::Shader &shader) {
     shader.cameraPosLoc = glGetUniformLocation(shader.shaderProgram, "cameraPos");
     shader.timeLoc = glGetUniformLocation(shader.shaderProgram, "time");
 }
 
-void initUniformsBasicShader(gps::Shader &shader) {
+void initUniformsRainShader(gps::Shader &shader) {
 	shader.useShaderProgram();
 
     // create model matrix for teapot
@@ -509,7 +511,7 @@ void initUniformsBasicShader(gps::Shader &shader) {
 	shader.dirLightColorLoc = glGetUniformLocation(shader.shaderProgram, "lightColor");
 	// send light color to shader
 	glUniform3fv(shader.dirLightColorLoc, 1, glm::value_ptr(directionalLightColor));
-    initOtherUniformsBasicShader(shader);
+    initOtherUniformsRainShader(shader);
 
 }
 
@@ -568,7 +570,7 @@ void initLightUniformsForShader(gps::Shader &shader) {
     shader.useShaderProgram();
 
     // create model matrix for teapot
-    model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    //model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
     shader.modelLoc = glGetUniformLocation(shader.shaderProgram, "model");
 
     // get view matrix for current camera
@@ -664,14 +666,10 @@ void initSineWavesVBOs() {
             //tex coords
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j * textureRepeatU / (float)(GRID_NUM_POINTS_WIDTH - 1);
             vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = textureRepeatV - i * textureRepeatV / (float)(GRID_NUM_POINTS_HEIGHT - 1);
-            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = 0.8;
-            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = 0.8;
-            // 
-            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 0] = j / (float)(GRID_NUM_POINTS_WIDTH - 1);
-            //vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 1] = i / (float)(GRID_NUM_POINTS_HEIGHT - 1);
+            
             //xy position indices in grid (for computing sine function)
-            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j + 60);
-            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i + 75);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 2] = (float)(j);
+            vertexData[4 * (i * GRID_NUM_POINTS_WIDTH + j) + 3] = (float)(i);
         }
     }
 
@@ -721,7 +719,7 @@ void initUniformsForSineWaves(gps::Shader &shader) {
     shader.useShaderProgram();
 
     // create model matrix for grid
-    model = glm::mat4(1.0f);
+    waterModel = glm::mat4(1.0f);
     shader.modelLoc = glGetUniformLocation(shader.shaderProgram, "model");
 
     // get view matrix for current camera
@@ -731,7 +729,7 @@ void initUniformsForSineWaves(gps::Shader &shader) {
     glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // compute normal matrix grid
-    normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
+    waterNormalMatrix = glm::mat3(glm::inverseTranspose(view * waterModel));
     shader.normalMatrixLoc = glGetUniformLocation(shader.shaderProgram, "normalMatrix");
 
     // create projection matrix
@@ -743,10 +741,10 @@ void initUniformsForSineWaves(gps::Shader &shader) {
     glUniformMatrix4fv(shader.projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
     //set the light direction (direction towards the light)
-    lightDir = glm::vec3(0.0f, 1.0f, 1.0f);
+    //lightDir = glm::vec3(0.0f, 1.0f, 1.0f);
     shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "dirLightDir");
     // send light dir to shader
-    glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(lightDir, 1.0f))));
+    glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(directionalLightDir, 1.0f))));
 
     //set light color
     lightColor = glm::vec3(1.0f, 1.0f, 1.0f); //white light
@@ -784,15 +782,15 @@ glm::mat4 computeLightSpaceTrMatrix() {
     return lightSpaceTrMatrix; 
 }
 
-void bindShadowMap(gps::Shader shader)
+void bindShadowMap(gps::Shader &shader)
 {
     glActiveTexture(GL_TEXTURE3); 
     glBindTexture(GL_TEXTURE_2D, depthMapTexture); 
     shader.shadowMapLoc = glGetUniformLocation(shader.shaderProgram, "shadowMap");
-    glUniform1i(shader.shadowMapLoc, 3); 
+    glUniform1i(glGetUniformLocation(shader.shaderProgram, "shadowMap"), 3);
 
     shader.lightSpaceTrMatrixLoc = glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix");
-    glUniformMatrix4fv(shader.lightSpaceTrMatrixLoc, 
+    glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix"),
         1, 
         GL_FALSE, 
         glm::value_ptr(computeLightSpaceTrMatrix())); 
@@ -805,7 +803,7 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader);
 
-    //send teapot model matrix data to shader
+    //send teapot model matrix data to shader````
     model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     if (canDrive && !carDrivingViewMode)
@@ -1003,7 +1001,6 @@ void renderCar(gps::Shader shader, bool depthPass, gps::Model3D &model) {
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(carNormalMatrix));
-
     }
 
     glDisable(GL_CULL_FACE); 
@@ -1072,6 +1069,7 @@ void renderSineWaves(gps::Shader shader) {
     // select active shader program
     shader.useShaderProgram();
     glUniform1i(shader.fogLoc, fog);
+    bindShadowMap(shader); 
 
     //update view matrix
     if (canDrive && !carDrivingViewMode)
@@ -1084,13 +1082,17 @@ void renderSineWaves(gps::Shader shader) {
     //glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(lightDir, 1.0f))));
 
     //send grid model matrix data to shader
-    glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    waterModel = glm::translate(glm::mat4(1.0f), glm::vec3(60.0f, 0.0f, 75.0f));
+    glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(waterModel));
 
     // compute normal matrix for grid
-    normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
+    waterNormalMatrix = glm::mat3(glm::inverseTranspose(view * waterModel));
 
     //send grid normal matrix data to shader
-    glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(waterNormalMatrix));
+
+    // lumina directionala
+    glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::inverseTranspose(glm::mat3(view)) * directionalLightDir));
 
     //send texture to shader
     glActiveTexture(GL_TEXTURE4);
@@ -1134,6 +1136,7 @@ void renderOneWheel(gps::Shader shader, bool depthPass, gps::Model3D& model) {
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(carNormalMatrix));
+        glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::inverseTranspose(glm::mat3(view)) * directionalLightDir));
 
     }
 
@@ -1167,6 +1170,7 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(carNormalMatrix));
+        glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::inverseTranspose(glm::mat3(view)) * directionalLightDir));
 
     }
     glm::mat4 aux_model;
@@ -1234,14 +1238,14 @@ void drawObjects(gps::Shader shader, bool depthPass)
     /*printf("One Tree\n");
     glCheckError();*/
     renderCarWheels(depthPass ? shader : lightingShader, depthPass);
+    renderCar(depthPass ? shader : lightingShader, depthPass, windowsCar); 
+    /*printf("Car windows\n");
+    glCheckError();*/
 
     if (!depthPass)
     {
         renderSkybox(skyboxShader); 
         /*printf("SkyBox\n");
-        glCheckError();*/
-        renderCar(depthPass ? shader : lightingShader, depthPass, windowsCar);
-        /*printf("Car windows\n");
         glCheckError();*/
         renderRainInstanced(myBasicShader); 
         /*printf("Rain\n");
@@ -1309,7 +1313,7 @@ GLuint initTexture(const char* file_name) {
 }
 
 void renderScene() {
-
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // rasterizarea in harta de adancime
     depthMapShader.useShaderProgram(); 
     glUniformMatrix4fv(glGetUniformLocation(depthMapShader.shaderProgram, "lightSpaceTrMatrix"), 1, GL_FALSE, glm::value_ptr(computeLightSpaceTrMatrix()));
@@ -1380,7 +1384,7 @@ int main(int argc, const char * argv[]) {
 
     /*printf("SineWaves Uniforms\n");
     glCheckError();*/
-	initUniformsBasicShader(myBasicShader);
+	initUniformsRainShader(myBasicShader);
     /*printf("Basic Uniforms\n");
     glCheckError();*/
     initLightUniformsForShader(lightingShader);
@@ -1392,11 +1396,11 @@ int main(int argc, const char * argv[]) {
     initSkybox();
     /*printf("Skybox\n");
     glCheckError();*/
-    initFBO();
-   /* printf("FBOs\n");
-    glCheckError();*/
     initRaindrops();
     /*printf("Raindrops\n");
+    glCheckError();*/
+    initFBO();
+    /* printf("FBOs\n");
     glCheckError();*/
     setupRaindropsAttributes();
     /*printf("Raindrops Attributes\n");
