@@ -2,7 +2,7 @@
 
 in vec3 fNormal;
 in vec4 fPosEye;
-in vec4 directionalLightPosEye; // lightDir*view
+in vec4 directionalLightPosEye; 
 in vec4 positionalLightPosEye1; 
 in vec4 positionalLightPosEye2; 
 in vec4 positionalLightPosEye3; 

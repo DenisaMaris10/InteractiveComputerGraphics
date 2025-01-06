@@ -55,10 +55,10 @@ glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 0.0f);
 glm::vec3 directionalLightColor;
 
 // positional lights parameters
-glm::vec3 positionalLightDir1 = glm::vec3(1+8.0f, 7.0f, -7.0f); //  red
-glm::vec3 positionalLightDir2 = glm::vec3(1+8.0f, 7.0f, 7.0f); // orange
-glm::vec3 positionalLightDir3 = glm::vec3(-1-8.0f, 7.0f, 7.0f); // purple
-glm::vec3 positionalLightDir4 = glm::vec3(-1-8.0f, 7.0f, -7.0f);  // blue
+glm::vec3 positionalLightDir1 = glm::vec3(-1-90.0f, 10.0f, 85.0f); //  red
+glm::vec3 positionalLightDir2 = glm::vec3(-1-90.0f, 10.0f, 64.0f); // orange
+glm::vec3 positionalLightDir3 = glm::vec3(-1-113.0f, 10.0f, 64.0f); // purple
+glm::vec3 positionalLightDir4 = glm::vec3(-1-113.0f, 10.0f, 85.0f);  // blue
 glm::vec3 positionalLightColor1;
 glm::vec3 positionalLightColor2;    
 glm::vec3 positionalLightColor3;
@@ -214,6 +214,16 @@ GLint lightDirLoc;
 //GLint lightColorLoc;
 glm::vec3 lightDir;
 glm::vec3 lightColor;
+
+typedef struct spot {
+    glm::vec3 position;
+    glm::vec3 color;
+    float innerCutOff;
+    float outerCutOff;
+}SpotLight;
+
+//spot light
+SpotLight spotLight;
 
 // for fog
 bool fog = false;
@@ -431,7 +441,7 @@ void initOpenGLState() {
 
 void initModels() {
     teapot.LoadModel("models/teapot/teapot20segUT.obj");
-    scene.LoadModel("models/Scena_Copac/Scena_2.obj");
+    scene.LoadModel("models/Parcare_drum/Scena_2.obj");
     tennis_ball.LoadModel("models/Minge_putine_varfuri/Minge_tenis_final.obj");
     screenQuad.LoadModel("models/quad/quad.obj");
     raindrop_obj.LoadModel("models/Raindrop/raindrop.obj");
@@ -567,6 +577,12 @@ void initLightAttrUniforms(gps::Shader& shader) {
     glUniform3fv(shader.positionalLightColorLoc4, 1, glm::value_ptr(positionalLightColor4));
     shader.shadowMapLoc = glGetUniformLocation(shader.shaderProgram, "shadowMap");
     shader.lightSpaceTrMatrixLoc = glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix");
+
+    spotLight.position = myCamera.getCameraPosition();
+    spotLight.color = glm::vec3(0.0f, 0.0f, 1.0f);
+    spotLight.innerCutOff = 12.5f;
+    spotLight.outerCutOff = 17.5f;
+
 
 }
 
@@ -708,13 +724,12 @@ void initSineWavesVBOs() {
     //split vertex attributes
     //tex coords
     
-    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
     
     //grid XY indices
-    glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
-    
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
 }
@@ -821,6 +836,7 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
     {
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
+        normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
     }
 
@@ -1183,6 +1199,7 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(carNormalMatrix));
         glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(glm::inverseTranspose(glm::mat3(view)) * directionalLightDir));
         // left back wheel
+        glDisable(GL_CULL_FACE);
         glm::mat4 aux_model;
         aux_model = carModel;
         aux_model = glm::translate(carModel, leftBackWheelPos);
@@ -1213,17 +1230,18 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
         aux_model = glm::rotate(aux_model, glm::radians(wheelsAngle), glm::vec3(1.0f, 0.0f, 0.0f));
         aux_model = glm::translate(aux_model, -rightFrontWheelPos);
         glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(aux_model));
+       
+
+
+        rightFrontWheel.Draw(shader);
+
+
+        glEnable(GL_CULL_FACE);
+
 
     }
     
-    glDisable(GL_CULL_FACE); 
-
     
-    rightFrontWheel.Draw(shader);
-
-    
-    glEnable(GL_CULL_FACE); 
-
 }
 
 void drawObjects(gps::Shader shader, bool depthPass)
@@ -1388,7 +1406,7 @@ int main(int argc, const char * argv[]) {
     initSineWavesVBOs();
     /*printf("SineWaves VBO\n");
     glCheckError();*/
-    gridTexture = initTexture("textures/water.png");
+    gridTexture = initTexture("textures/water_texture.jpg");
 	initModels();
     /*printf("Models\n");
     glCheckError();*/

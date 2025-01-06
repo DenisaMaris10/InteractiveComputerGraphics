@@ -2,11 +2,12 @@
 
 in vec3 fNormal;
 in vec4 fPosEye;
-in vec4 directionalLightPosEye; // lightDir*view
+in vec4 directionalLightPosEye; // view^lightDir
 in vec4 positionalLightPosEye1; 
 in vec4 positionalLightPosEye2; 
 in vec4 positionalLightPosEye3; 
 in vec4 positionalLightPosEye4; 
+in vec4 spotLightPos; 
 in vec2 fragTexCoords;
 in vec4 fragPosLightSpace;
 
@@ -22,6 +23,9 @@ uniform vec3 positionalLightColor4;
 uniform sampler2D diffuseTexture;
 uniform sampler2D specularTexture;
 uniform bool fog;
+uniform vec3 spotLightColor;
+uniform vec3 spotLightInnerCutOff;
+uniform vec3 spotLightOuterCutOff;
 
 vec3 ambient;
 float ambientStrength = 0.2f;

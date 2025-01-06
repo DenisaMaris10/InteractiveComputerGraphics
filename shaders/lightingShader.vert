@@ -31,7 +31,7 @@ void main()
 	//compute eye space coordinates
 	fragTexCoords = vTexCoords;
 	fPosEye = view * model * vec4(vPosition, 1.0f);
-	directionalLightPosEye = view * vec4(dirLightDir, 1.0f);
+	directionalLightPosEye = view * vec4(dirLightDir, 0.0f);
 	positionalLightPosEye1 = view * vec4(posLightDir1, 1.0f);
 	positionalLightPosEye2 = view * vec4(posLightDir2, 1.0f);
 	positionalLightPosEye3 = view * vec4(posLightDir3, 1.0f);
