@@ -137,4 +137,10 @@ namespace gps {
         this->cameraTarget = this->cameraPosition + this->cameraFrontDirection;
 
     }
+
+    glm::mat4 CarCamera::getViewMatrix() {
+        auto cam = glm::lookAt(this->cameraPosition, this->cameraTarget, this->up);
+
+        return glm::translate(glm::vec3(0, -1.5, 0)) * cam;
+    }
 }

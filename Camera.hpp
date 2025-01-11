@@ -14,7 +14,7 @@ namespace gps {
         //Camera constructor
         Camera(glm::vec3 cameraPosition, glm::vec3 cameraTarget, glm::vec3 cameraUp);
         //return the view matrix, using the glm::lookAt() function
-        glm::mat4 getViewMatrix();
+        virtual glm::mat4 getViewMatrix();
         // return camera position
         glm::vec3 getCameraPosition();  
         glm::vec3 getCameraFrontDirection();  
@@ -43,6 +43,7 @@ namespace gps {
         public:
             CarCamera(glm::vec3 cameraPosition, glm::vec3 cameraTarget, glm::vec3 cameraUp);
             void move(MOVE_DIRECTION direction, float speed, bool canFly);
+            virtual glm::mat4 getViewMatrix() override;
             float carYAngle;
             glm::mat3 carYRotation;
     };

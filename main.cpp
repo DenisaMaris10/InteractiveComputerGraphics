@@ -51,14 +51,14 @@ glm::mat3 carNormalMatrix;
 glm::mat3 waterNormalMatrix;
 
 // light parameters
-glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 0.0f);
+glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
 glm::vec3 directionalLightColor;
 
 // positional lights parameters
-glm::vec3 positionalLightDir1 = glm::vec3(-1-90.0f, 10.0f, 85.0f); //  red
-glm::vec3 positionalLightDir2 = glm::vec3(-1-90.0f, 10.0f, 64.0f); // orange
-glm::vec3 positionalLightDir3 = glm::vec3(-1-113.0f, 10.0f, 64.0f); // purple
-glm::vec3 positionalLightDir4 = glm::vec3(-1-113.0f, 10.0f, 85.0f);  // blue
+glm::vec3 positionalLightDir1 = glm::vec3(-1-89.7075f, 10.3366f, 21.2985f); //  red
+glm::vec3 positionalLightDir2 = glm::vec3(-1-89.7215f, 10.291f, 1.01083); // orange
+glm::vec3 positionalLightDir3 = glm::vec3(-1-115.338f, 10.2782f, 0.875658f); // purple
+glm::vec3 positionalLightDir4 = glm::vec3(-1-115.416f, 10.3454f, 21.3536f);  // blue
 glm::vec3 positionalLightColor1;
 glm::vec3 positionalLightColor2;    
 glm::vec3 positionalLightColor3;
@@ -88,7 +88,7 @@ gps::Camera myCamera(
     glm::vec3(10.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 
-GLfloat cameraSpeed = 0.1f;
+GLfloat cameraSpeed = 0.2f;
 bool canFly = true; // true -> camera se poate deplasa si sus, jos; false -> camera se poate misca doar inainte, inapoi, stanga, dreapta 
 
 GLboolean pressedKeys[1024];
@@ -132,8 +132,8 @@ gps::Shader lightingShader;
 GLuint shadowMapFBO;
 GLuint depthMapTexture;
 bool showDepthMap;
-const unsigned int SHADOW_WIDTH = 2048;
-const unsigned int SHADOW_HEIGHT = 2048;
+const unsigned int SHADOW_WIDTH = 8192;
+const unsigned int SHADOW_HEIGHT = 8192;
 gps::Shader depthMapShader;
 gps::Shader screenQuadShader;
 
@@ -217,6 +217,7 @@ glm::vec3 lightColor;
 
 typedef struct spot {
     glm::vec3 position;
+    glm::vec3 direction;
     glm::vec3 color;
     float innerCutOff;
     float outerCutOff;
@@ -441,7 +442,7 @@ void initOpenGLState() {
 
 void initModels() {
     teapot.LoadModel("models/teapot/teapot20segUT.obj");
-    scene.LoadModel("models/Parcare_drum/Scena_2.obj");
+    scene.LoadModel("models/Scena_2/Scena_2.obj");
     tennis_ball.LoadModel("models/Minge_putine_varfuri/Minge_tenis_final.obj");
     screenQuad.LoadModel("models/quad/quad.obj");
     raindrop_obj.LoadModel("models/Raindrop/raindrop.obj");
@@ -511,7 +512,7 @@ void initUniformsRainShader(gps::Shader &shader) {
 	glUniformMatrix4fv(shader.projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));	
 
 	//set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 10.0f, 0.0f);
+    directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
     shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "lightDir");
 	// send light dir to shader
 	glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -529,7 +530,7 @@ void initUniformsRainShader(gps::Shader &shader) {
 
 void initLightAttrUniforms(gps::Shader& shader) {
     //set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 10.0f, 5.0f);
+    directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
     shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "dirLightDir");
     // send light dir to shader
     glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -578,10 +579,22 @@ void initLightAttrUniforms(gps::Shader& shader) {
     shader.shadowMapLoc = glGetUniformLocation(shader.shaderProgram, "shadowMap");
     shader.lightSpaceTrMatrixLoc = glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix");
 
+    //spot light
     spotLight.position = myCamera.getCameraPosition();
+    shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+    glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+    spotLight.direction = myCamera.getCameraFrontDirection();
+    shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+    glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.direction));
     spotLight.color = glm::vec3(0.0f, 0.0f, 1.0f);
-    spotLight.innerCutOff = 12.5f;
-    spotLight.outerCutOff = 17.5f;
+    shader.spotLightColorLoc = glGetUniformLocation(shader.shaderProgram, "spotLightColor");
+    glUniform3fv(shader.spotLightColorLoc, 1, glm::value_ptr(spotLight.color));
+    spotLight.innerCutOff = 8.5f;
+    shader.spotLightInnerCutOffLoc = glGetUniformLocation(shader.shaderProgram, "spotLightInnerCutOff");
+    glUniform1f(shader.spotLightInnerCutOffLoc, glm::cos(glm::radians(spotLight.innerCutOff)));
+    spotLight.outerCutOff = 10.5f;
+    shader.spotLightOuterCutOffLoc = glGetUniformLocation(shader.shaderProgram, "spotLightOuterCutOff");
+    glUniform1f(shader.spotLightOuterCutOffLoc, glm::cos(glm::radians(spotLight.outerCutOff)));
 
 
 }
@@ -795,7 +808,7 @@ void setupRaindropsAttributes()
 
 glm::mat4 computeLightSpaceTrMatrix() { 
     glm::mat4 lightView = glm::lookAt(directionalLightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); 
-    const GLfloat near_plane = 0.1f, far_plane = 400.0f; 
+    const GLfloat near_plane = 0.1f, far_plane = 200.0f; 
     glm::mat4 lightProjection = glm::ortho(-200.0f, 200.0f, -200.0f, 200.0f, near_plane, far_plane); 
     glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;  
     return lightSpaceTrMatrix; 
@@ -825,6 +838,7 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
 
     //send teapot model matrix data to shader`
     model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
+    model = glm::translate(model, glm::vec3(0, 3, 5));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     if (canDrive && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
@@ -834,6 +848,14 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
     //send teapot normal matrix data to shader
     if (!depthPass) 
     {
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction)); 
+        
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         normalMatrix = glm::mat3(glm::inverseTranspose(view * model));
@@ -861,6 +883,14 @@ void renderField(gps::Shader shader, bool depthPass) {
 
     if (!depthPass)
     {
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         sceneNormalMatrix = glm::mat3(glm::inverseTranspose(view * sceneModel));
@@ -902,6 +932,14 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
     
     if (!depthPass)
     {
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         tennisBallNormalMatrix = glm::mat3(glm::inverseTranspose(view * tennisBallModel));
@@ -1020,6 +1058,14 @@ void renderCar(gps::Shader shader, bool depthPass, gps::Model3D &model) {
             view = carCamera.getViewMatrix();
         else
             view = myCamera.getViewMatrix();
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
@@ -1159,6 +1205,14 @@ void renderOneWheel(gps::Shader shader, bool depthPass, gps::Model3D& model) {
 
     if (!depthPass)
     {
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
@@ -1193,6 +1247,14 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
 
     if (!depthPass)
     {
+        // spot light 
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniform1i(shader.fogLoc, fog);
         carNormalMatrix = glm::mat3(glm::inverseTranspose(view * carModel));
