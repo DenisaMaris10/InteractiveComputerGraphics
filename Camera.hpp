@@ -9,7 +9,7 @@ namespace gps {
     enum MOVE_DIRECTION { MOVE_FORWARD, MOVE_BACKWARD, MOVE_RIGHT, MOVE_LEFT };
 
     class Camera {
-        friend class CarCamera;
+        //friend class CarCamera;
     public:
         //Camera constructor
         Camera(glm::vec3 cameraPosition, glm::vec3 cameraTarget, glm::vec3 cameraUp);
@@ -30,7 +30,7 @@ namespace gps {
         void rotate(float pitch, float yaw);
         void update();
 
-    private:
+    protected:
         glm::vec3 cameraPosition;
         glm::vec3 cameraTarget;
         glm::vec3 cameraFrontDirection;

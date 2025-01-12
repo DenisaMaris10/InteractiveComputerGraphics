@@ -150,7 +150,7 @@ namespace gps {
     }
 
     glm::mat4 CarCamera::getViewMatrix() {
-        auto cam = glm::lookAt(this->cameraPosition, this->cameraTarget, this->up);
+        glm::mat4 cam = glm::lookAt(this->cameraPosition, this->cameraTarget, this->up);
 
         return glm::translate(glm::vec3(0, -1.5, 0)) * cam;
     }

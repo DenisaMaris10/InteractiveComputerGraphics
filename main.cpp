@@ -398,6 +398,10 @@ void processMovement() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
+    if (pressedKeys[GLFW_KEY_K]) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+    }
+
     if (pressedKeys[GLFW_KEY_UP]) {
         if (canDrive) {
             carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
@@ -463,7 +467,7 @@ void initModels() {
     rightBackWheel.LoadModel("models/Masina/RightBackWheel/RightBackWheel.obj");
     rightFrontWheel.LoadModel("models/Masina/RightFrontWheel/RightFrontWheel.obj");
     windowsCar.LoadModel("models/Geamuri_masina/Geamuri_masina.obj");
-    oneTree.LoadModel("models/Un_singur_copac/Un_singur_copac.obj");
+    oneTree.LoadModel("models/Un_singur_copac_un_plan/Copac_un_plan.obj");
     //initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
@@ -695,7 +699,7 @@ void initRaindropsInstanced() {
     {
         aux_pos = glm::vec2(randomNumber(-RAINDROP_X, RAINDROP_X), randomNumber(-RAINDROP_Z, RAINDROP_Z));
         raindropsPosOffset.push_back(aux_pos);
-        raindropsPosOffset.push_back(aux_pos);
+        //raindropsPosOffset.push_back(aux_pos);
     }
 }
 
@@ -1105,6 +1109,7 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
     bindShadowMap(shader, depthPass);
 
     treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-20, 1, 0));
+    treeModel = glm::scale(treeModel, glm::vec3(1.5f, 2.0f, 1.0f));
     //treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     //treeModel = glm::mat4(1.f);
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(treeModel));
@@ -1116,17 +1121,6 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
     glm::mat4 aux = view * treeModel;
     glm::vec3 xMod = aux[0];
     glm::vec3 yMod = aux[1];
-    //auto angle = glm::orientedAngle(xMod, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
-    ////std::cout << angle << std::endl;
-    //auto r = glm::normalize(glm::cross(xMod, glm::vec3(1, 0, 0)));
-    //std::cout << r.x << "," << r.y << "," << r.z << std::endl;
-
-
-
-
-    //glm::vec3 xFinal = glm::vec3(1, 0, 0);
-    //glm::vec3 yFinal = glm::rotate(yMod, -angle, glm::vec3(0, 1, 0));
-    //glm::vec3 zFinal = glm::cross(xFinal, yFinal);
 
     glm::vec3 cr = glm::cross(glm::vec3(1, 0, 0), yMod);
 
@@ -1144,7 +1138,7 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
     {
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(aux));
         glUniform1i(shader.fogLoc, fog);
-        treeNormalMatrix = glm::mat3(glm::inverseTranspose(view * treeModel));
+        treeNormalMatrix = glm::mat3(glm::inverseTranspose(aux * treeModel));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(treeNormalMatrix));
 
     }
@@ -1160,7 +1154,7 @@ void renderSineWaves(gps::Shader shader, bool depthPass) {
     // select active shader program
     shader.useShaderProgram();
     glUniform1i(shader.fogLoc, fog);
-    //glUniform1i(shader.lightTypeLoc, isLight);
+    glUniform1i(shader.lightTypeLoc, isLight);
     //bindShadowMap(shader, depthPass);
 
     //send grid model matrix data to shader
@@ -1490,7 +1484,7 @@ void initScenePresentation() {
     cameraPositions.push_back(glm::vec3(-37.1633f, 4.99623f, -41.6824f));
     cameraPositions.push_back(glm::vec3(-60.6109f, 3.68978f, +2.37258f));
     cameraPositions.push_back(glm::vec3(-23.6122f, 3.11611f, +32.1608f));
-    cameraPositions.push_back(glm::vec3(-33.5871f, 4.56704f, +132.279));
+    cameraPositions.push_back(glm::vec3(-33.5871f, 4.56704f, +152.858f));
     
     cameraTargets.push_back(glm::vec3(93.7707f, 4.09839f, -47.9606f));
     cameraTargets.push_back(glm::vec3(24.9304f, 4.84612f, -76.2596f));
@@ -1582,8 +1576,6 @@ int main(int argc, const char * argv[]) {
     glCheckError()*/;
     initScenePresentation();
     setWindowCallbacks();
-    /*printf("Window Callbacks\n");
-    glCheckError();*/
 
     glfwSetInputMode(myWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -1598,10 +1590,6 @@ int main(int argc, const char * argv[]) {
         }
         else
             canDrive = false;*/
-
-        //if (!runningPresentation)
-            //if(cameraAnimation)
-                //scenePresentation();
 
         if (cameraAnimation)
         {

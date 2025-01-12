@@ -36,7 +36,7 @@ namespace gps {
 
 			glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-			glVertexAttribDivisor(3, 1);
+			glVertexAttribDivisor(3, 2);
 
 			glBindVertexArray(0);
 		}
@@ -54,8 +54,7 @@ namespace gps {
 			}
 
 			glBindVertexArray(meshes[i].getBuffers().VAO);
-			glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(meshes[i].indices.size()), GL_UNSIGNED_INT, 0, nrInstances);
-			//glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(meshes[i].indices.size()), GL_UNSIGNED_INT, 0);
+			glDrawElementsInstanced(GL_TRIANGLES, (GLsizei)(meshes[i].indices.size()), GL_UNSIGNED_INT, 0, nrInstances);
 			glBindVertexArray(0);
 
 			for (GLuint j = 0; j < meshes[i].textures.size(); j++) {
