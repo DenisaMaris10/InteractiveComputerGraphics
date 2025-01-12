@@ -24,7 +24,7 @@ void main()
 	//gl_Position = vec4(0, 0, 0.1f, 1.0f) + vec4(vPosition, 0);
 	//gl_Position = vec4(0,0,0.3f, 0.f) + vec4(1*vPosition, 1.0f);
 
-	float height = mod(time + float(gl_InstanceID), 15.0);
+	float height = 14.0f - mod(time + float(gl_InstanceID), 15.0);
 	float xPos = iPos.x + cameraPos.x;
 	if(height <= 3)
 	{

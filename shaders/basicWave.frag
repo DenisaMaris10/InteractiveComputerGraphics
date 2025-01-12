@@ -7,6 +7,8 @@ in vec4 positionalLightPosEye1;
 in vec4 positionalLightPosEye2; 
 in vec4 positionalLightPosEye3; 
 in vec4 positionalLightPosEye4; 
+in vec4 spotLightPosEye; 
+in vec4 spotLightDirEye; 
 in vec2 fTexCoords;
 in vec4 fragPosLightSpace;
 
@@ -21,7 +23,11 @@ uniform vec3 positionalLightColor3;
 uniform vec3 positionalLightColor4;
 uniform sampler2D diffuseTexture;
 //uniform sampler2D specularTexture;
-uniform bool fog;
+uniform bool fog;uniform vec3 spotLightColor;
+//uniform vec3 spotLightDirection;
+uniform float spotLightInnerCutOff;
+uniform float spotLightOuterCutOff;
+uniform mat4 view;
 
 vec3 ambient;
 float ambientStrength = 0.2f;
@@ -38,6 +44,9 @@ float quadratic = 0.0075f;
 vec3 ambientPos1, ambientPos2, ambientPos3, ambientPos4;
 vec3 diffusePos1, diffusePos2, diffusePos3, diffusePos4;
 vec3 specularPos1, specularPos2, specularPos3, specularPos4;
+vec3 ambientSpot, diffuseSpot, specularSpot;
+
+float theta, epsilon, intensity;
 
 void computeDirLightComponents(inout vec3 ambient, inout vec3 diffuse, inout vec3 specular, vec3 lightColor, vec4 lightPosEye)
 {
@@ -133,6 +142,21 @@ float computeShadow()
 	return shadow;
 }
 
+void computeSpotLight(inout vec3 ambient, inout vec3 diffuse, inout vec3 specular)
+{
+	computePositionalLight(ambient, diffuse, specular, spotLightColor, spotLightPosEye);
+
+	vec3 lightDirN = normalize(vec3(spotLightPosEye) - fPosEye.xyz).xyz;
+	theta = dot(lightDirN, normalize(-spotLightDirEye.xyz));
+	epsilon = spotLightInnerCutOff - spotLightOuterCutOff;
+	intensity = clamp((theta - spotLightOuterCutOff)/epsilon, 0.0f, 1.0f);
+
+	ambient *= intensity;
+	diffuse *= intensity;
+	specular *= intensity;
+	
+}
+
 float computeFog()
 {
 	float fogDensity = 0.01f;
@@ -150,10 +174,11 @@ void main()
 	computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
 	computePositionalLight(ambientPos3, diffusePos3, specularPos3, positionalLightColor3, positionalLightPosEye3);
 	computePositionalLight(ambientPos4, diffusePos4, specularPos4, positionalLightColor4, positionalLightPosEye4);
+	computeSpotLight(ambientSpot, diffuseSpot, specularSpot);
 
-	ambient += ambientPos1 + ambientPos2 + ambientPos3 + ambientPos4;
-	diffuse += diffusePos1 + diffusePos2 + diffusePos3 + diffusePos4;
-	specular += specularPos1 + specularPos2 + specularPos3 + specularPos4;
+	ambient += ambientPos1 + ambientPos2 + ambientPos3 + ambientPos4 + ambientSpot;
+	diffuse += diffusePos1 + diffusePos2 + diffusePos3 + diffusePos4 + diffuseSpot;
+	specular += specularPos1 + specularPos2 + specularPos3 + specularPos4 + specularSpot;
 	
 	//pentru harti difuze
 	vec4 colorFromTexture = texture(diffuseTexture, fTexCoords);
@@ -175,6 +200,6 @@ void main()
 		fColor = fogColor*(1-fogFactor) + vec4(color, colorFromTexture.a)*fogFactor;
 	}
 	else
-		fColor = vec4(color, colorFromTexture.a);
+		fColor = vec4(color, 0.7);
 
 }

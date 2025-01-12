@@ -24,6 +24,7 @@ uniform vec3 positionalLightColor4;
 uniform sampler2D diffuseTexture;
 uniform sampler2D specularTexture;
 uniform bool fog;
+uniform bool lightType;
 uniform vec3 spotLightColor;
 //uniform vec3 spotLightDirection;
 uniform float spotLightInnerCutOff;
@@ -169,13 +170,16 @@ float computeFog()
 void main() 
 {
 	// calculam lumina directionala
-	computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
-	// calculam luminile pozitionale
-	computePositionalLight(ambientPos1, diffusePos1, specularPos1, positionalLightColor1, positionalLightPosEye1);
-	computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
-	computePositionalLight(ambientPos3, diffusePos3, specularPos3, positionalLightColor3, positionalLightPosEye3);
-	computePositionalLight(ambientPos4, diffusePos4, specularPos4, positionalLightColor4, positionalLightPosEye4);
-	//computeSpotLight(ambientSpot, diffuseSpot, specularSpot);
+	if(lightType)
+		computeDirLightComponents(ambient, diffuse, specular, lightColor, directionalLightPosEye);
+	else{
+		// calculam luminile pozitionale
+		computePositionalLight(ambientPos1, diffusePos1, specularPos1, positionalLightColor1, positionalLightPosEye1);
+		computePositionalLight(ambientPos2, diffusePos2, specularPos2, positionalLightColor2, positionalLightPosEye2);
+		computePositionalLight(ambientPos3, diffusePos3, specularPos3, positionalLightColor3, positionalLightPosEye3);
+		computePositionalLight(ambientPos4, diffusePos4, specularPos4, positionalLightColor4, positionalLightPosEye4);
+		computeSpotLight(ambientSpot, diffuseSpot, specularSpot);
+	}
 
 	ambient += ambientPos1 + ambientPos2 + ambientPos3 + ambientPos4 + ambientSpot;
 	diffuse += diffusePos1 + diffusePos2 + diffusePos3 + diffusePos4 + diffuseSpot;

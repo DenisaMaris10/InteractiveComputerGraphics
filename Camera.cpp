@@ -86,12 +86,23 @@ namespace gps {
         this->cameraTarget = this->cameraPosition + this->cameraFrontDirection;
     }
 
+    void Camera::update()
+    {
+        glm::vec3 front = cameraTarget - cameraPosition;
+        this->cameraFrontDirection = glm::normalize(front);
+        glm::vec3 right = glm::cross((-this->cameraFrontDirection), this->up);
+        this->cameraRightDirection = -glm::normalize(right);
+        this->cameraUpDirection = glm::cross((-this->cameraFrontDirection), this->cameraRightDirection);
+    }
+
     void Camera::setCameraPosition(glm::vec3 cameraPosition) {
         this->cameraPosition = cameraPosition;
+        this->update();
     }
 
     void Camera::setCameraTarget(glm::vec3 cameraTarget) {
         this->cameraTarget = cameraTarget;
+        this->update();
     }
 
     void Camera::setCameraFrontDirection(glm::vec3 cameraFrontDirection) {
