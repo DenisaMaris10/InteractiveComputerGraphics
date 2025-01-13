@@ -139,7 +139,7 @@ gps::Shader depthMapShader;
 gps::Shader screenQuadShader;
 
 // animatie minge de tenis 
-float deltaZ, deltaY = 3, viteza = 0.1, gravity = 0.05f;
+float deltaZ = 0, deltaY = 3, viteza = 0.1, gravity = 0.05f;
 bool upDirection = false;
 
 // bounding boxes
@@ -839,11 +839,9 @@ void bindShadowMap(gps::Shader shader, bool depthPass)
 {
     glActiveTexture(GL_TEXTURE3); 
     glBindTexture(GL_TEXTURE_2D, depthMapTexture); 
-    //shader.shadowMapLoc = glGetUniformLocation(shader.shaderProgram, "shadowMap");
     if(!depthPass)
         glUniform1i(shader.shadowMapLoc, 3);
 
-    //shader.lightSpaceTrMatrixLoc = glGetUniformLocation(shader.shaderProgram, "lightSpaceTrMatrix");
     glUniformMatrix4fv(shader.lightSpaceTrMatrixLoc,
         1, 
         GL_FALSE, 
@@ -940,7 +938,9 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
     else 
         deltaY += gravity;
     deltaZ += viteza;
-    tennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, deltaY, deltaZ));
+    
+    tennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 17));
+    tennisBallModel = glm::translate(tennisBallModel, glm::vec3(0, deltaY, deltaZ));
 
 
     bindShadowMap(shader, depthPass);
@@ -1067,8 +1067,6 @@ void renderCar(gps::Shader shader, bool depthPass, gps::Model3D &model) {
     shader.useShaderProgram();
 
     bindShadowMap(shader, depthPass);
-    
-    //printf("Car angle: %f\n", carCamera.carYAngle);
 
     carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition); 
     carModel = glm::translate(carModel, (carCamera.getCameraPosition() + carPositionAdjust));
@@ -1108,11 +1106,20 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader, depthPass);
 
-    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-20, 1, 0));
+    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-20, 0, 0));
     treeModel = glm::scale(treeModel, glm::vec3(1.5f, 2.0f, 1.0f));
-    //treeModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
-    //treeModel = glm::mat4(1.f);
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(treeModel));
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, depthMapTexture);
+    if (!depthPass)
+        glUniform1i(shader.shadowMapLoc, 3);
+
+    glUniformMatrix4fv(shader.lightSpaceTrMatrixLoc,
+        1,
+        GL_FALSE,
+        glm::value_ptr(computeLightSpaceTrMatrix()));
+
+    
 
     if (canDrive && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
@@ -1136,8 +1143,16 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     if (!depthPass)
     {
+        spotLight.position = myCamera.getCameraPosition();
+        shader.spotLightPosLoc = glGetUniformLocation(shader.shaderProgram, "spotLightPos");
+        glUniform3fv(shader.spotLightPosLoc, 1, glm::value_ptr(spotLight.position));
+        spotLight.direction = myCamera.getCameraFrontDirection();
+        shader.spotLightDirectionLoc = glGetUniformLocation(shader.shaderProgram, "spotLightDirection");
+        glUniform3fv(shader.spotLightDirectionLoc, 1, glm::value_ptr(spotLight.direction));
+
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(aux));
         glUniform1i(shader.fogLoc, fog);
+        glUniform1i(shader.lightTypeLoc, isLight);
         treeNormalMatrix = glm::mat3(glm::inverseTranspose(aux * treeModel));
         glUniformMatrix3fv(shader.normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(treeNormalMatrix));
 
@@ -1161,8 +1176,6 @@ void renderSineWaves(gps::Shader shader, bool depthPass) {
     waterModel = glm::translate(glm::mat4(1.0f), glm::vec3(60.0f, 0.0f, 75.0f));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(waterModel));
 
-    //if (!depthPass)
-    //{
         //update view matrix
         if (canDrive && !carDrivingViewMode)
             view = carCamera.getViewMatrix();
@@ -1170,8 +1183,6 @@ void renderSineWaves(gps::Shader shader, bool depthPass) {
             view = myCamera.getViewMatrix();
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-        // send light dir to shader
-        //glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(glm::inverseTranspose(view) * glm::vec4(lightDir, 1.0f))));
 
         // compute normal matrix for grid
         waterNormalMatrix = glm::mat3(glm::inverseTranspose(view * waterModel));
@@ -1199,11 +1210,8 @@ void renderSineWaves(gps::Shader shader, bool depthPass) {
 
 
         glBindVertexArray(gridVAO);
-    //}
-
     // draw grid
     glDrawElements(GL_TRIANGLES, (GRID_NUM_POINTS_WIDTH - 1) * (GRID_NUM_POINTS_HEIGHT - 1) * 2 * 3, GL_UNSIGNED_INT, 0);
-    //glDrawArrays(GL_POINTS, 0, GRID_NUM_POINTS_WIDTH * GRID_NUM_POINTS_HEIGHT);
 
     //initLightAttrUniforms(shader);
 
@@ -1213,8 +1221,6 @@ void renderOneWheel(gps::Shader shader, bool depthPass, gps::Model3D& model) {
     shader.useShaderProgram();
 
     bindShadowMap(shader, depthPass);
-
-    //printf("Car angle: %f\n", carCamera.carYAngle);
 
     carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition);
     carModel = glm::translate(carModel, (carCamera.getCameraPosition() + carPositionAdjust));
@@ -1257,8 +1263,6 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
     shader.useShaderProgram();
 
     bindShadowMap(shader, depthPass);
-
-    //printf("Car angle: %f\n", carCamera.carYAngle);
 
     carModel = glm::translate(glm::mat4(1.0f), carBlenderPosition);
     carModel = glm::translate(carModel, (carCamera.getCameraPosition() + carPositionAdjust));
@@ -1351,8 +1355,6 @@ void drawObjects(gps::Shader shader, bool depthPass)
     renderCar(depthPass ? shader : lightingShader, depthPass, car);   
     /*printf("Car\n");
     glCheckError();*/
- 
-    renderOneTree(depthPass ? shader : treeShader, depthPass);
     /*printf("One Tree\n");
     glCheckError();*/
     renderCarWheels(depthPass ? shader : lightingShader, depthPass);
@@ -1362,6 +1364,7 @@ void drawObjects(gps::Shader shader, bool depthPass)
 
     if (!depthPass)
     {
+        renderOneTree(depthPass ? shader : treeShader, depthPass);
         renderSineWaves(basicWaveShader, depthPass);
         /*printf("SineWaves\n");
         glCheckError();*/ 
@@ -1489,23 +1492,15 @@ void initScenePresentation() {
     cameraTargets.push_back(glm::vec3(93.7707f, 4.09839f, -47.9606f));
     cameraTargets.push_back(glm::vec3(24.9304f, 4.84612f, -76.2596f));
     cameraTargets.push_back(glm::vec3(-20.6801f, 2.24363f, -64.2955f));
-    //cameraTargets.push_back(glm::vec3(-29.5095f, 1.0691f, -37.0539f));
     cameraTargets.push_back(glm::vec3(-77.8485f, 6.70789f, 13.7462f));
     cameraTargets.push_back(glm::vec3(-58.2658f, 4.65272f, 33.2536f));
     cameraTargets.push_back(glm::vec3(-19.9138f, 3.64029f, 82.5839));
     cameraTargets.push_back(glm::vec3(7.63788f, 3.94673f, -29.4615f));
     
-    
-    
-    
-    
-
-    //cameraPositions.push_back(glm::vec3(93.4104f, 5.59219f, 11.7013f))
 }
 
 void scenePresentation()
 {
-    //runningPresentation = true;
     glm::vec3 point;
 
     cameraAnimationT += 0.001;

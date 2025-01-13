@@ -13,6 +13,8 @@ out vec4 positionalLightPosEye1;
 out vec4 positionalLightPosEye2; 
 out vec4 positionalLightPosEye3; 
 out vec4 positionalLightPosEye4; 
+out vec4 spotLightPosEye; 
+out vec4 spotLightDirEye; 
 out vec4 fragPosLightSpace;
 
 uniform mat4 model;
@@ -24,6 +26,8 @@ uniform	vec3 posLightDir1;
 uniform	vec3 posLightDir2;
 uniform	vec3 posLightDir3;
 uniform	vec3 posLightDir4;
+uniform	vec3 spotLightPos;
+uniform vec3 spotLightDirection;
 uniform mat4 lightSpaceTrMatrix;
 
 void main() 
@@ -31,27 +35,14 @@ void main()
 	//compute eye space coordinates
 	fragTexCoords = vTexCoords;
 	fPosEye = view * model * vec4(vPosition, 1.0f);
-	directionalLightPosEye = view * vec4(dirLightDir, 1.0f);
+	directionalLightPosEye = view * vec4(dirLightDir, 0.0f);
 	positionalLightPosEye1 = view * vec4(posLightDir1, 1.0f);
 	positionalLightPosEye2 = view * vec4(posLightDir2, 1.0f);
 	positionalLightPosEye3 = view * vec4(posLightDir3, 1.0f);
 	positionalLightPosEye4 = view * vec4(posLightDir4, 1.0f);
+	spotLightPosEye = view * vec4(spotLightPos, 1.0f);
+	spotLightDirEye = view * vec4(spotLightDirection, 0.0f);
 	fNormal = normalize(normalMatrix * vNormal);
-	mat4 aux_view = view ;
-	aux_view[0][0] = 1.0f;
-	aux_view[1][0] = 0.0f;
-	aux_view[2][0] = 0.0f;
-	vec3 xx = vec3(1, 0, 0);
-	vec3 yy = vec3(aux_view[0][1], aux_view[1][1], aux_view[2][1]);
-	vec3 zz = cross(xx, yy); // pwntru a pastra axele perpendiculare
-
-	aux_view[0][2]=zz.x;
-	aux_view[1][2] = zz.y;
-	aux_view[2][2]=zz.z;
-
-	//aux_view[0][2] = 0.0f;
-	//aux_view[1][2] = 0.0f;
-	//aux_view[2][2] = 1.0f;
 
 	fragPosLightSpace = lightSpaceTrMatrix * model * vec4(vPosition, 1.0f);
 
