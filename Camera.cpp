@@ -115,7 +115,6 @@ namespace gps {
     }
 
     void CarCamera::move(MOVE_DIRECTION direction, float speed, bool canFly) {
-        //TODO
 
         if (direction == MOVE_FORWARD)
         {
@@ -135,7 +134,6 @@ namespace gps {
         {
             angle -= 1;
             this->rotate(0.0f, angle);
-            //this->cameraFrontDirection = glm::rotate(-0.05f, glm::vec3(0, 1, 0)) * glm::vec4(this->cameraFrontDirection, 0);
             this->carYAngle = glm::orientedAngle(this->cameraFrontDirection, glm::vec3(0, 0, 1), glm::vec3(0, 1, 0));
         }
         else if (direction == MOVE_LEFT)
@@ -152,6 +150,6 @@ namespace gps {
     glm::mat4 CarCamera::getViewMatrix() {
         glm::mat4 cam = glm::lookAt(this->cameraPosition, this->cameraTarget, this->up);
 
-        return glm::translate(glm::vec3(0, -1.5, 0)) * cam;
+        return glm::translate(glm::vec3(0.7, -1.68, 0)) * cam; // pentru a pozitiona deasupra volanului
     }
 }

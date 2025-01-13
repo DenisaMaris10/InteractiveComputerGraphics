@@ -52,7 +52,7 @@ glm::mat3 carNormalMatrix;
 glm::mat3 waterNormalMatrix;
 
 // light parameters
-glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
+glm::vec3 directionalLightDir = glm::vec3(0.0f, 10.0f, 10.0f);
 glm::vec3 directionalLightColor;
 
 // positional lights parameters
@@ -174,12 +174,13 @@ float dirX, dirZ;
 glm::vec3 carBlenderPosition(0.0f, -1.0f, -20.0f);
 gps::CarCamera carCamera(
     carBlenderPosition + glm::vec3(0.0f, 1.0f, 0.0f),
-    glm::vec3(0.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 0.0f, -100.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 glm::vec3 carPositionAdjust = -carBlenderPosition;//+ glm::vec3(0.0f, 1.0f, 0.0f);
 
 bool canDrive = false;
 bool carDrivingViewMode = false;
+bool driving = false;
 float wheelsAngle;
 glm::vec3 rightBackWheelPos(1.57486f, 0.249317f, 2.56864f);
 glm::vec3 rightFrontWheelPos(1.63543f, 0.246326f, -2.54323f);
@@ -288,7 +289,13 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     }
 
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
-        canDrive = !canDrive;
+        if (canDrive || driving) {
+            driving = !driving;
+            if (!driving) {
+                myCamera.setCameraPosition(carCamera.getCameraPosition() + glm::vec3(-6.0f, 3.0f, 0.0f));
+                myCamera.setCameraTarget(carCamera.getCameraTarget());
+            }
+        }
     }
 
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -364,22 +371,33 @@ float euclideanDistance(glm::vec3 a, glm::vec3 b) {
 }
 
 void processMovement() {
+    
 	if (pressedKeys[GLFW_KEY_W]) {
-		myCamera.move(gps::MOVE_FORWARD, cameraSpeed, canFly);
+        myCamera.move(gps::MOVE_FORWARD, cameraSpeed, canFly);
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition());
+        if(distance < 4)
+            myCamera.move(gps::MOVE_BACKWARD, cameraSpeed, canFly);
 	}
 
 	if (pressedKeys[GLFW_KEY_S]) {
-		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed, canFly);
+        myCamera.move(gps::MOVE_BACKWARD, cameraSpeed, canFly);
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition());
+        if (distance < 4)
+            myCamera.move(gps::MOVE_FORWARD, cameraSpeed, canFly);
 	}
 
 	if (pressedKeys[GLFW_KEY_A]) {
-		myCamera.move(gps::MOVE_LEFT, cameraSpeed, canFly);
-        treeRotationAngle -= 15*cameraSpeed;
+        myCamera.move(gps::MOVE_LEFT, cameraSpeed, canFly);
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition());
+        if (distance < 4)
+            myCamera.move(gps::MOVE_RIGHT, cameraSpeed, canFly);
 	}
 
 	if (pressedKeys[GLFW_KEY_D]) {
-		myCamera.move(gps::MOVE_RIGHT, cameraSpeed, canFly);
-        treeRotationAngle += 15*cameraSpeed;
+        myCamera.move(gps::MOVE_RIGHT, cameraSpeed, canFly);
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition());
+        if (distance < 4)
+            myCamera.move(gps::MOVE_LEFT, cameraSpeed, canFly);
 	}
 
     if (pressedKeys[GLFW_KEY_Q]) {
@@ -403,27 +421,27 @@ void processMovement() {
     }
 
     if (pressedKeys[GLFW_KEY_UP]) {
-        if (canDrive) {
+        if (driving) {
             carCamera.move(gps::MOVE_FORWARD, cameraSpeed, false);
-            wheelsAngle -= 1.0f;
+            wheelsAngle -= 2.0f;
         }
     }
 
     if (pressedKeys[GLFW_KEY_DOWN]) {
-        if (canDrive) {
+        if (driving) {
             carCamera.move(gps::MOVE_BACKWARD, cameraSpeed, false);
-            wheelsAngle += 1.0f;
+            wheelsAngle += 2.0f;
         }
     }
 
     if (pressedKeys[GLFW_KEY_RIGHT]) {
-        if (canDrive) {
+        if (driving) {
             carCamera.move(gps::MOVE_RIGHT, cameraSpeed, false);
         }
     }
 
     if (pressedKeys[GLFW_KEY_LEFT]) {
-        if (canDrive) {
+        if (driving) {
             carCamera.move(gps::MOVE_LEFT, cameraSpeed, false);
         }
     }
@@ -467,30 +485,19 @@ void initModels() {
     rightBackWheel.LoadModel("models/Masina/RightBackWheel/RightBackWheel.obj");
     rightFrontWheel.LoadModel("models/Masina/RightFrontWheel/RightFrontWheel.obj");
     windowsCar.LoadModel("models/Geamuri_masina/Geamuri_masina.obj");
+    //oneTree.LoadModel("models/Un_singur_copac/Un_singur_copac.obj");
     oneTree.LoadModel("models/Un_singur_copac_un_plan/Copac_un_plan.obj");
-    //initialTennisBallModel = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 10));
 }
 
 void initShaders() {
 	myBasicShader.loadShader(
         "shaders/rainInstanced.vert",
         "shaders/rainInstanced.frag");
-   /* printf("skybox\n");
-    glCheckError();*/
     skyboxShader.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
-   /* printf("lighting\n");
-    glCheckError();*/
     lightingShader.loadShader("shaders/lightingShader.vert", "shaders/lightingShader.frag");
-    /*printf("depth\n");
-    glCheckError();*/
     depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
-    /*printf("squad\n");
-    glCheckError();*/
     screenQuadShader.loadShader("shaders/screenQuad.vert", "shaders/screenQuad.frag");
-    /*printf("tree\n");
-    glCheckError();*/
     treeShader.loadShader("shaders/treeShader.vert", "shaders/treeShader.frag"); 
-    printf("wave\n");
     glCheckError();
     basicWaveShader.loadShader("shaders/basicWave.vert", "shaders/basicWave.frag");
 
@@ -527,7 +534,7 @@ void initUniformsRainShader(gps::Shader &shader) {
 	glUniformMatrix4fv(shader.projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));	
 
 	//set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
+    //directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
     shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "lightDir");
 	// send light dir to shader
 	glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -545,7 +552,7 @@ void initUniformsRainShader(gps::Shader &shader) {
 
 void initLightAttrUniforms(gps::Shader& shader) {
     //set the light direction (direction towards the light)
-    directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
+    //directionalLightDir = glm::vec3(0.0f, 10.0f, 1.0f);
     shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "dirLightDir");
     // send light dir to shader
     glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
@@ -773,7 +780,7 @@ void initUniformsForSineWaves(gps::Shader &shader) {
     shader.modelLoc = glGetUniformLocation(shader.shaderProgram, "model");
 
     // get view matrix for current camera
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else 
         view = myCamera.getViewMatrix();
@@ -792,18 +799,6 @@ void initUniformsForSineWaves(gps::Shader &shader) {
     shader.projectionLoc = glGetUniformLocation(shader.shaderProgram, "projection");
     // send projection matrix to shader
     glUniformMatrix4fv(shader.projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    //set the light direction (direction towards the light)
-    //lightDir = glm::vec3(0.0f, 1.0f, 1.0f);
-    //shader.directionalLightDirLoc = glGetUniformLocation(shader.shaderProgram, "dirLightDir");
-    // send light dir to shader
-    //glUniform3fv(shader.directionalLightDirLoc, 1, glm::value_ptr(directionalLightDir));
-
-    //set light color
-    //lightColor = glm::vec3(1.0f, 1.0f, 1.0f); //white light
-    //shader.dirLightColorLoc = glGetUniformLocation(shader.shaderProgram, "lightColor");
-    // send light color to shader
-    //glUniform3fv(shader.dirLightColorLoc, 1, glm::value_ptr(lightColor));
 
     shader.gridTextureLoc = glGetUniformLocation(shader.shaderProgram, "diffuseTexture");
     glm::vec2 gridSize{ GRID_NUM_POINTS_WIDTH, GRID_NUM_POINTS_HEIGHT };
@@ -829,7 +824,7 @@ void setupRaindropsAttributes()
 
 glm::mat4 computeLightSpaceTrMatrix() { 
     glm::mat4 lightView = glm::lookAt(directionalLightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); 
-    const GLfloat near_plane = 0.1f, far_plane = 200.0f; 
+    const GLfloat near_plane = -60.0f, far_plane = 200.0f; 
     glm::mat4 lightProjection = glm::ortho(-200.0f, 200.0f, -200.0f, 200.0f, near_plane, far_plane); 
     glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;  
     return lightSpaceTrMatrix; 
@@ -859,7 +854,7 @@ void renderTeapot(gps::Shader shader, bool depthPass) {
     model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     model = glm::translate(model, glm::vec3(0, 3, 5));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -895,7 +890,7 @@ void renderField(gps::Shader shader, bool depthPass) {
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(sceneModel));
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -948,7 +943,7 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
     //tennisBallModel = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(tennisBallModel));
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -976,12 +971,11 @@ void renderTennisBall(gps::Shader shader, bool depthPass) {
 
 void renderRain(gps::Shader shader) {
     shader.useShaderProgram();
-    //view = myCamera.getViewMatrix();
-    //glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+  
     currentTime = glfwGetTime();
     deltaTime = currentTime - lastTime; 
     lastTime = currentTime;
-    //printf("Position raindrop: %f, %f, %f, %f\n", raindrops.at(0).position.x, raindrops.at(0).position.y, raindrops.at(0).position.z, raindrops.at(0).velocity);
+    
     for (int i = 0; i<NR_RAINDROPS; i++)
     {
         
@@ -992,7 +986,6 @@ void renderRain(gps::Shader shader) {
             raindrops[i].position.z = myCamera.getCameraPosition().z + randomNumber(-RAINDROP_Z, RAINDROP_Z);
         }
 
-        //printf("Position raindrop: %f, %f, %f\n", drop.position.x, drop.position.y, drop.position.z);
         view = myCamera.getViewMatrix();
         glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
@@ -1011,7 +1004,6 @@ void renderRainInstanced(gps::Shader shader) {
     shader.useShaderProgram();
     view = myCamera.getViewMatrix();
     glUniformMatrix4fv(shader.viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    //glUniform1i(shader.fogLoc, fog);
 
     raindropModel = glm::identity<glm::mat4>();
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(raindropModel));
@@ -1024,7 +1016,7 @@ void renderRainInstanced(gps::Shader shader) {
 
 void renderSkybox(gps::Shader shader) {
     shader.useShaderProgram();
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -1043,7 +1035,7 @@ void renderTrees(gps::Shader shader, bool depthPass) {
     sceneModel = glm::mat4(1.0f);
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(sceneModel));
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -1078,7 +1070,7 @@ void renderCar(gps::Shader shader, bool depthPass, gps::Model3D &model) {
 
     if (!depthPass)
     {
-        if (canDrive && !carDrivingViewMode)
+        if (driving && !carDrivingViewMode)
             view = carCamera.getViewMatrix();
         else
             view = myCamera.getViewMatrix();
@@ -1106,7 +1098,7 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     bindShadowMap(shader, depthPass);
 
-    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-20, 0, 0));
+    treeModel = glm::translate(glm::mat4(1.0f), glm::vec3(-75, -0.5, -20));
     treeModel = glm::scale(treeModel, glm::vec3(1.5f, 2.0f, 1.0f));
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(treeModel));
     glActiveTexture(GL_TEXTURE3);
@@ -1121,7 +1113,7 @@ void renderOneTree(gps::Shader shader, bool depthPass) {
 
     
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -1177,7 +1169,7 @@ void renderSineWaves(gps::Shader shader, bool depthPass) {
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(waterModel));
 
         //update view matrix
-        if (canDrive && !carDrivingViewMode)
+        if (driving && !carDrivingViewMode)
             view = carCamera.getViewMatrix();
         else
             view = myCamera.getViewMatrix();
@@ -1228,7 +1220,7 @@ void renderOneWheel(gps::Shader shader, bool depthPass, gps::Model3D& model) {
 
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(carModel));
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -1270,7 +1262,7 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
 
     glUniformMatrix4fv(shader.modelLoc, 1, GL_FALSE, glm::value_ptr(carModel));
 
-    if (canDrive && !carDrivingViewMode)
+    if (driving && !carDrivingViewMode)
         view = carCamera.getViewMatrix();
     else
         view = myCamera.getViewMatrix();
@@ -1340,40 +1332,20 @@ void renderCarWheels(gps::Shader shader, bool depthPass) {
 void drawObjects(gps::Shader shader, bool depthPass)
 {
     glCheckError();
-    renderTeapot(depthPass ? shader : lightingShader, depthPass);  
-    /*printf("Teapot\n");
-    glCheckError();*/
+    //renderTeapot(depthPass ? shader : lightingShader, depthPass);  
     renderField(depthPass ? shader : lightingShader, depthPass); 
-    /*printf("Field\n");
-    glCheckError();*/
     renderTennisBall(depthPass ? shader : lightingShader, depthPass);  
-    /*printf("Tennis Ball\n");
-    glCheckError();*/
     renderTrees(depthPass ? shader : lightingShader, depthPass);   
-    /*printf("Trees\n");
-    glCheckError();*/
     renderCar(depthPass ? shader : lightingShader, depthPass, car);   
-    /*printf("Car\n");
-    glCheckError();*/
-    /*printf("One Tree\n");
-    glCheckError();*/
     renderCarWheels(depthPass ? shader : lightingShader, depthPass);
     renderCar(depthPass ? shader : lightingShader, depthPass, windowsCar); 
-    /*printf("Car windows\n");
-    glCheckError();*/
 
     if (!depthPass)
     {
         renderOneTree(depthPass ? shader : treeShader, depthPass);
         renderSineWaves(basicWaveShader, depthPass);
-        /*printf("SineWaves\n");
-        glCheckError();*/ 
         renderSkybox(skyboxShader); 
-        /*printf("SkyBox\n");
-        glCheckError();*/
         renderRainInstanced(myBasicShader); 
-        /*printf("Rain\n");
-        glCheckError();*/
     }
 }
 
@@ -1534,41 +1506,18 @@ int main(int argc, const char * argv[]) {
 
     initOpenGLState();
     initSineWavesVBOs();
-    /*printf("SineWaves VBO\n");
-    glCheckError();*/
     gridTexture = initTexture("textures/water_texture.jpg");
 	initModels();
-    /*printf("Models\n");
-    glCheckError();*/
 	initShaders();
-    /*printf("Shaders\n");
-    glCheckError();*/
 
     initUniformsForSineWaves(basicWaveShader); 
-
-    /*printf("SineWaves Uniforms\n");
-    glCheckError();*/
 	initUniformsRainShader(myBasicShader);
-    /*printf("Basic Uniforms\n");
-    glCheckError();*/
     initLightUniformsForShader(lightingShader);
-    /*printf("lighting Uniforms\n");
-    glCheckError();*/
     initLightUniformsForShader(treeShader);
-    /*printf("Tree uniforms\n");
-    glCheckError();*/
     initSkybox();
-    /*printf("Skybox\n");
-    glCheckError();*/
     initRaindrops();
-    /*printf("Raindrops\n");
-    glCheckError();*/
     initFBO();
-    /* printf("FBOs\n");
-    glCheckError();*/
     setupRaindropsAttributes();
-    /*printf("Raindrops Attributes\n");
-    glCheckError()*/;
     initScenePresentation();
     setWindowCallbacks();
 
@@ -1578,13 +1527,12 @@ int main(int argc, const char * argv[]) {
 	// application loop
 	while (!glfwWindowShouldClose(myWindow.getWindow())) {
         processMovement();
-        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition() + carBlenderPosition);
-        //printf("Distanta: %f\n", distance);
-       /* if (distance < 10.0f) {
+        float distance = euclideanDistance(myCamera.getCameraPosition(), carCamera.getCameraPosition());
+        if (distance < 10.0f) {
             canDrive = true;
         }
         else
-            canDrive = false;*/
+            canDrive = false;
 
         if (cameraAnimation)
         {
