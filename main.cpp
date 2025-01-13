@@ -89,7 +89,7 @@ gps::Camera myCamera(
     glm::vec3(10.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f));
 
-GLfloat cameraSpeed = 0.2f;
+GLfloat cameraSpeed = 0.3f;
 bool canFly = true; // true -> camera se poate deplasa si sus, jos; false -> camera se poate misca doar inainte, inapoi, stanga, dreapta 
 
 GLboolean pressedKeys[1024];
@@ -1486,6 +1486,10 @@ void scenePresentation()
         //for camera target
         point = gps::getBezierPoint(cameraTargets, cameraAnimationT, cameraPositions.size());
         myCamera.setCameraTarget(point);
+    }
+    else {
+        cameraAnimation = false;
+        cameraAnimationT = 0;
     }
 
 }
