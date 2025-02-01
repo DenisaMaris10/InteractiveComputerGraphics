@@ -4,7 +4,7 @@
 The application aims to provide a photorealistic rendering of a 3D scene by implementing various functionalities, including scene illumination using different types of light 
 (directional and positional), shadow generation, rain simulation, and fragment discarding.
     The application allows the user to explore the scene through a first-person perspective and interact with certain objects, such as simulating driving a car.
-![image](https://github.com/user-attachments/assets/3cad95ef-e631-4afe-8cfa-327b927f95c3)
+    ![image](https://github.com/user-attachments/assets/3cad95ef-e631-4afe-8cfa-327b927f95c3)
 
 ## Features
 ### Functionalities
@@ -22,7 +22,7 @@ The application aims to provide a photorealistic rendering of a 3D scene by impl
 - Waves simulation
   - For simulating waves on the river I used a grid of points that change their position in time after function
 - Fog simulation
-  ![image](https://github.com/user-attachments/assets/f2ee57b1-c966-41db-96db-bfaf3fc4850b)
+  - ![image](https://github.com/user-attachments/assets/f2ee57b1-c966-41db-96db-bfaf3fc4850b)
 
 - Illumination
   - Used Blinn-Phong model
