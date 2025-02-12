@@ -1,6 +1,6 @@
 ﻿# Interactive Computer Graphics Application: Presenting a recreation area that includes tennis courts, a river and cars
 ## Description 
-    This project reprezents an interactive computer graphics application realized using OpenGL library. 
+This project reprezents an interactive computer graphics application realized using OpenGL library. 
 The application aims to provide a photorealistic rendering of a 3D scene by implementing various functionalities, including scene illumination using different types of light 
 (directional and positional), shadow generation, rain simulation, and fragment discarding.
     The application allows the user to explore the scene through a first-person perspective and interact with certain objects, such as simulating driving a car.
