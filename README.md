@@ -7,7 +7,7 @@ The application aims to provide a photorealistic rendering of a 3D scene by impl
 
 It allows the user to explore the scene through a first-person perspective and interact with certain objects, such as simulating driving a car.
 
-    ![image](https://github.com/user-attachments/assets/3cad95ef-e631-4afe-8cfa-327b927f95c3)
+![image](https://github.com/user-attachments/assets/3cad95ef-e631-4afe-8cfa-327b927f95c3)
 
 ## Features
 ### Functionalities
